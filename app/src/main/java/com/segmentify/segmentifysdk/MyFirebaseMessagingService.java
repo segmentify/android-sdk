@@ -14,8 +14,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import android.app.Notification;
-import android.graphics.drawable.Icon;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -51,7 +49,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String body = data.get("message");
             String deepLink = data.get("deeplink");
             String image = data.get("image");
-            String icon = data.get("icon");
+            String icon = "https://img.segmentify.com/52f397e3-505c-409c-acb8-67076ecbb664/u/ca6845b0-8842-4e71-92e5-36a0be5548ef.png";
 
             if (title != null || body != null) {
                 sendNotification(body, title, deepLink, image, icon);
@@ -146,8 +144,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             }
 
             if (imageBitmap != null) {
-                notificationBuilder.setStyle(new NotificationCompat.BigPictureStyle()
-                        .bigPicture(imageBitmap));
+                NotificationCompat.BigPictureStyle bigPictureStyle = new NotificationCompat.BigPictureStyle()
+                        .bigPicture(imageBitmap);
+                if (iconBitmap != null) {
+                    bigPictureStyle.bigLargeIcon(iconBitmap);
+                }
+                notificationBuilder.setStyle(bigPictureStyle);
             }
 
             NotificationManager notificationManager =
@@ -164,20 +166,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 notificationManager.createNotificationChannel(channel);
             }
 
-            Notification notification = notificationBuilder.build();
-            if (iconBitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                try {
-                    Notification.Builder platformBuilder = Notification.Builder.recoverBuilder(this, notification);
-                    platformBuilder.setSmallIcon(Icon.createWithBitmap(iconBitmap));
-                    notification = platformBuilder.build();
-                    Log.d(TAG, "Small icon set from bitmap successfully");
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to set bitmap small icon", e);
-                }
-            } else {
-                Log.d(TAG, "Skipping bitmap small icon: iconBitmap=" + (iconBitmap != null) + ", SDK=" + Build.VERSION.SDK_INT);
-            }
-            notificationManager.notify(requestCode, notification);
+            notificationManager.notify(requestCode, notificationBuilder.build());
             Log.d(TAG, "Notification sent. ID: " + requestCode);
         } catch (Exception e) {
             Log.e("MyFirebaseMsgService", "Bildirim oluşturulurken hata: " + e.getMessage());
