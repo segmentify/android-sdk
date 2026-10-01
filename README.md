@@ -70,11 +70,41 @@ Buildr :
 
 ## Usage
 
+```kotlin
+SegmentifyManager.config(
+    context = this, 
+    appKey = "YOUR_API_KEY", 
+    dataCenterUrl = "https://your-datacenter.url", 
+    subDomain = "your-subdomain",
+    authToken = "YOUR_AUTH_TOKEN" // Optional: custom Basic Auth token
+)
+```
+
+You can also update the authentication token or hostname at runtime:
+
+```kotlin
+// Update auth token
+SegmentifyManager.setAuthToken("NEW_AUTH_TOKEN")
+
+// Update push configuration
+SegmentifyManager.setPushConfig(
+    dataCenterUrlPush = "https://push-notification-api.url",
+    authToken = "OPTIONAL_AUTH_TOKEN"
+)
+
+// Update full configuration (including hostname)
+SegmentifyManager.setConfig(
+    apiKey = "YOUR_API_KEY",
+    dataCenterUrl = "https://new-datacenter.url",
+    subDomain = "your-subdomain",
+    authToken = "OPTIONAL_AUTH_TOKEN"
+)
+```
+
+
 To learn more about how to integrate Segmentify Android SDK to your application, please check [Integration Guide](https://www.segmentify.com/dev/integration_android/).
 
 For other integrations you can check [Master Integration](https://www.segmentify.com/dev/) guide too.
-
-
 
 ## License
 
