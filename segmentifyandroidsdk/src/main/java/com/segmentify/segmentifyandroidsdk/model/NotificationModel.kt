@@ -8,6 +8,7 @@ class NotificationModel{
     var deviceToken:String? = null
     var type:NotificationType? = null
     var instanceId:String? = null
+    var interactionId:String? = null
     private  var userId : String?=null
     private  var osVersion:String?=null
     private  var os:String?=null
