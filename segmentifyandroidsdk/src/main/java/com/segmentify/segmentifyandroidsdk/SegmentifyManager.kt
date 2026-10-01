@@ -854,6 +854,8 @@ object SegmentifyManager {
                 SegmentifyLogger.printErrorLog("You must fill instanceId before accessing notification view event")
                 return
             }
+            // Keep existing Gimli call for view report counters
+            PushController.sendNotificationInteraction(notificationModel)
         }
 
         if (notificationModel.type == NotificationType.CLICK) {
@@ -864,18 +866,26 @@ object SegmentifyManager {
                 clientPreferences?.setPushCampaignId(notificationModel.instanceId!!)
             }
 
-            // Send INTERACTION { type: "push" } to Gandalf for push attribution (basket/revenue)
-            val interactionModel = InteractionModel()
-            interactionModel.eventName = Constant.interactionEventName
-            interactionModel.type = Constant.pushStep
-            interactionModel.instanceId = notificationModel.instanceId
-            interactionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
-            interactionModel.nextPage = false
-            EventController.sendInteractionEvent(interactionModel)
-        }
+            // Web parity: type: "push-click" for Click metric in the push report
+            val clickInteractionModel = InteractionModel()
+            clickInteractionModel.eventName = Constant.interactionEventName
+            clickInteractionModel.type = Constant.pushClickStep
+            clickInteractionModel.instanceId = notificationModel.instanceId
+            clickInteractionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
+            clickInteractionModel.nextPage = false
+            EventController.sendInteractionEvent(clickInteractionModel)
 
-        // Keep existing Gimli call for view/click report counters
-        PushController.sendNotificationInteraction(notificationModel)
+            // Attribution stamp: type: "push" that stamps the user record for basket/revenue
+            val attributionInteractionModel = InteractionModel()
+            attributionInteractionModel.eventName = Constant.interactionEventName
+            attributionInteractionModel.type = Constant.pushStep
+            attributionInteractionModel.instanceId = notificationModel.instanceId
+            attributionInteractionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
+            attributionInteractionModel.nextPage = false
+            EventController.sendInteractionEvent(attributionInteractionModel)
+
+            // For Option B: stop calling PushController.sendNotificationInteraction (Gimli) for clicks
+        }
     }
 
     fun getTrackingParameters(): UtmModel {
