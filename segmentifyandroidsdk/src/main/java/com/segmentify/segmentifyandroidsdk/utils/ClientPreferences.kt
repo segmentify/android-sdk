@@ -16,6 +16,8 @@ class ClientPreferences(context: Context) : PreferencesManager(context) {
     private val PUSH_CAMPAIGN_ID = "PUSH_CAMPAIGN_ID"
     private val PUSH_CAMPAIGN_PRODUCT_ID = "PUSH_CAMPAIGN_PRODUCT_ID"
     private val USER_PROFILE_SNAPSHOT = "SEG_USER_PROFILE"
+    private val DEVICE_TOKEN = "DEVICE_TOKEN"
+    private val AUTH_TOKEN = "AUTH_TOKEN"
 
     fun getApiUrl(): String {
         return getString(API_URL, "")!!
@@ -92,6 +94,23 @@ class ClientPreferences(context: Context) : PreferencesManager(context) {
 
     fun clearUserProfileSnapshot() {
         clearKey(USER_PROFILE_SNAPSHOT)
+    }
+
+    fun getDeviceToken(): String {
+        return getString(DEVICE_TOKEN, "")!!
+    }
+
+    fun setDeviceToken(deviceToken: String) {
+        putString(DEVICE_TOKEN, deviceToken)
+    }
+
+    fun getAuthToken(): String? {
+        val token = getString(AUTH_TOKEN, "")
+        return if (token.isNullOrBlank()) null else token
+    }
+
+    fun setAuthToken(authToken: String) {
+        putString(AUTH_TOKEN, authToken)
     }
 
 }

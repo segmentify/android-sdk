@@ -51,25 +51,30 @@ object SegmentifyManager {
         clientPreferences?.setSessionKeepSeconds(sessionKeepSecond)
     }
 
-    fun setConfig(apiKey: String, dataCenterUrl: String, subDomain: String) {
+    fun setConfig(apiKey: String, dataCenterUrl: String, subDomain: String, authToken: String? = null) {
         this.configModel.apiKey = apiKey
         this.configModel.dataCenterUrl = dataCenterUrl
         this.configModel.subDomain = subDomain
+        this.configModel.authToken = authToken
         this.configModel.os = "ANDROID"
         this.configModel.device = "ANDROID"
         setBaseApiUrl()
+        setAuthToken()
         ConnectionManager.rebuildServices()
     }
 
-    fun setPushConfig(dataCenterUrlPush: String) {
+    fun setPushConfig(dataCenterUrlPush: String, authToken: String? = null) {
         this.configModel.dataCenterUrlPush = dataCenterUrlPush
+        this.configModel.authToken = authToken
+        setAuthToken()
+        ConnectionManager.rebuildServices()
     }
 
     fun logStatus(isVisible: Boolean) {
         clientPreferences?.setLogVisible(isVisible)
     }
 
-    fun config(context: Context, appKey: String, dataCenterUrl: String, subDomain: String) {
+    fun config(context: Context, appKey: String, dataCenterUrl: String, subDomain: String, authToken: String? = null) {
 
         if (appKey.isBlank() || dataCenterUrl.isBlank() || subDomain.isBlank()) {
             SegmentifyLogger.printErrorLog("Api is not initialized, you can not enter null or empty parameter to config, please recheck your config parameters")
@@ -81,9 +86,11 @@ object SegmentifyManager {
         this.configModel.apiKey = appKey
         this.configModel.dataCenterUrl = dataCenterUrl
         this.configModel.subDomain = subDomain
+        this.configModel.authToken = authToken
         this.configModel.os = "ANDROID"
         this.configModel.device = "ANDROID"
         setBaseApiUrl()
+        setAuthToken()
 
         if (clientPreferences?.getSessionId().isNullOrBlank()) {
             if (clientPreferences?.getUserId().isNullOrBlank())
@@ -96,6 +103,16 @@ object SegmentifyManager {
 
     private fun setBaseApiUrl() {
         configModel.dataCenterUrl?.let { clientPreferences?.setApiUrl(it) }
+    }
+
+    private fun setAuthToken() {
+        configModel.authToken?.let { clientPreferences?.setAuthToken(it) }
+    }
+
+    fun setAuthToken(authToken: String) {
+        this.configModel.authToken = authToken
+        clientPreferences?.setAuthToken(authToken)
+        ConnectionManager.rebuildServices()
     }
 
     fun sendPageView(pageModel: PageModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
@@ -816,15 +833,16 @@ object SegmentifyManager {
         segmentifyObject.appVersion = appVersion
     }
 
-    fun sendNotification(notificationModel: NotificationModel) {
+    fun sendNotification(notificationModel: NotificationModel, callback: SegmentifyCallback<Boolean>? = null) {
         if (notificationModel.type == NotificationType.PERMISSION_INFO) {
 
             if (notificationModel.deviceToken.isNullOrEmpty()) {
                 SegmentifyLogger.printErrorLog("You must fill deviceToken before accessing notification event")
+                callback?.onDataLoaded(false)
                 return
             }
         }
-        PushController.sendNotification(notificationModel)
+        PushController.sendNotification(notificationModel, callback)
     }
 
 
@@ -839,13 +857,23 @@ object SegmentifyManager {
 
         if (notificationModel.type == NotificationType.CLICK) {
             if (notificationModel.instanceId.isNullOrEmpty()) {
-                SegmentifyLogger.printErrorLog("You must fill deviceToken before accessing notification click event")
+                SegmentifyLogger.printErrorLog("You must fill instanceId before accessing notification click event")
                 return
             } else {
                 clientPreferences?.setPushCampaignId(notificationModel.instanceId!!)
-                sendClickView(notificationModel.instanceId!!, notificationModel.instanceId!!);
             }
+
+            // Send INTERACTION { type: "push" } to Gandalf for push attribution (basket/revenue)
+            val interactionModel = InteractionModel()
+            interactionModel.eventName = Constant.interactionEventName
+            interactionModel.type = Constant.pushStep
+            interactionModel.instanceId = notificationModel.instanceId
+            interactionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
+            interactionModel.nextPage = false
+            EventController.sendInteractionEvent(interactionModel)
         }
+
+        // Keep existing Gimli call for view/click report counters
         PushController.sendNotificationInteraction(notificationModel)
     }
 
