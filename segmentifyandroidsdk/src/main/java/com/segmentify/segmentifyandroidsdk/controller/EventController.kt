@@ -25,7 +25,7 @@ internal object EventController {
 
         if(!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()){
 
-            ConnectionManager.getEventFactory().sendPageView(pageModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendPageView(pageModel)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
@@ -42,7 +42,7 @@ internal object EventController {
 
     fun sendSearchView(pageModel: SearchPageModel, segmentifyCallback: SegmentifyCallback<SearchResponseModel>){
         if(!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendSearchView(pageModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendSearchView(pageModel)
                     .enqueue(object : NetworkCallback<SearchEventResponseModel>(){
                         override fun onSuccess(response: SearchEventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatSearchResponse(response))
@@ -72,7 +72,7 @@ internal object EventController {
     fun sendFacetedSearchView(pageModel: SearchFacetedPageModel, segmentifyCallback: SegmentifyCallback<SearchFacetedResponseModel>){
         if (!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()) {
             ConnectionManager.getEventFactory()
-                .sendFacetedSearchView(pageModel, SegmentifyManager.configModel.apiKey!!)
+                .sendFacetedSearchView(pageModel)
                 .enqueue(object : NetworkCallback<SearchFacetedEventResponseModel>() {
                     override fun onSuccess(response: SearchFacetedEventResponseModel) {
                         segmentifyCallback.onDataLoaded(reformatSearchFacetedResponse(response))
@@ -99,7 +99,7 @@ internal object EventController {
         if(!customEventModel.userId.isNullOrEmpty() && !customEventModel.sessionId.isNullOrEmpty()){
 
 
-            ConnectionManager.getEventFactory().sendCustomEvent(customEventModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendCustomEvent(customEventModel)
                     .enqueue(object : NetworkCallback<EventResponseModel>() {
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
@@ -120,7 +120,7 @@ internal object EventController {
         if(!productModel.userId.isNullOrEmpty() && !productModel.sessionId.isNullOrEmpty()){
 
 
-            ConnectionManager.getEventFactory().sendProductView(productModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendProductView(productModel)
                     .enqueue(object : NetworkCallback<EventResponseModel>() {
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
@@ -138,7 +138,7 @@ internal object EventController {
 
         if(!basketModel.userId.isNullOrEmpty() && !basketModel.sessionId.isNullOrEmpty()){
 
-            ConnectionManager.getEventFactory().sendAddOrRemoveBasket(basketModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendAddOrRemoveBasket(basketModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
@@ -154,7 +154,7 @@ internal object EventController {
     fun sendCheckout(checkoutModel: CheckoutModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
 
         if(!checkoutModel.userId.isNullOrEmpty() && !checkoutModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendPurchase(checkoutModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendPurchase(checkoutModel)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
@@ -173,7 +173,7 @@ internal object EventController {
 
         if(!userModel.userId.isNullOrEmpty() && !userModel.sessionId.isNullOrEmpty()){
 
-            ConnectionManager.getEventFactory().sendUserOperation(userModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendUserOperation(userModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
@@ -189,7 +189,7 @@ internal object EventController {
 
         if (!userTraitsEventModel.userId.isNullOrEmpty() && !userTraitsEventModel.sessionId.isNullOrEmpty()) {
 
-            ConnectionManager.getEventFactory().sendUserTraits(userTraitsEventModel, SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendUserTraits(userTraitsEventModel)
                     .enqueue(object : NetworkCallback<Any>() {
                         override fun onSuccess(response: Any) {
                         }
@@ -204,7 +204,7 @@ internal object EventController {
 
         if (!model.userId.isNullOrEmpty() && !model.sessionId.isNullOrEmpty()) {
 
-            ConnectionManager.getEventFactory().sendUserTraits(model, SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendUserTraits(model)
                     .enqueue(object : NetworkCallback<Any>() {
                         override fun onSuccess(response: Any) {
                             if (identityPayload != null) {
@@ -229,7 +229,7 @@ internal object EventController {
 
         if(!userChangeModel.userId.isNullOrEmpty() && !userChangeModel.sessionId.isNullOrEmpty()){
 
-            ConnectionManager.getEventFactory().sendChangeUser(userChangeModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendChangeUser(userChangeModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                             segmentifyCallback.onDataLoaded(true)
@@ -247,7 +247,7 @@ internal object EventController {
     fun sendInteractionEvent(interactionModel: InteractionModel){
 
         if(!interactionModel.userId.isNullOrEmpty() && !interactionModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendInteractionEvent(interactionModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendInteractionEvent(interactionModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
@@ -263,7 +263,7 @@ internal object EventController {
     fun sendBannerOperations(bannerOperationOperationsModel: BannerOperationsModel){
 
         if(!bannerOperationOperationsModel.userId.isNullOrEmpty() && !bannerOperationOperationsModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendBannerOperations(bannerOperationOperationsModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendBannerOperations(bannerOperationOperationsModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
@@ -279,7 +279,7 @@ internal object EventController {
     fun sendBannerGroupView(bannerGroupViewModel: BannerGroupViewModel){
 
         if(!bannerGroupViewModel.userId.isNullOrEmpty() && !bannerGroupViewModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendBannerGroupView(bannerGroupViewModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendBannerGroupView(bannerGroupViewModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                             try {
@@ -310,7 +310,7 @@ internal object EventController {
     fun sendInternalBannerGroup(bannerGroupViewModel: BannerGroupViewModel){
 
         if(!bannerGroupViewModel.userId.isNullOrEmpty() && !bannerGroupViewModel.sessionId.isNullOrEmpty()){
-            ConnectionManager.getEventFactory().sendInternalBannerGroup(bannerGroupViewModel,SegmentifyManager.configModel.apiKey!!)
+            ConnectionManager.getEventFactory().sendInternalBannerGroup(bannerGroupViewModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }

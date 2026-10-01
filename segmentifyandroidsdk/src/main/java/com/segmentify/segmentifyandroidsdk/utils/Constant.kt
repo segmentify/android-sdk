@@ -46,6 +46,7 @@ class Constant {
         val bannerClickStep = "click"
         val bannerUpdateStep = "update"
         val searchStep = "search"
+        val pushStep = "push"
 
         //Custom
         val sessionKeepSecond = 86400
