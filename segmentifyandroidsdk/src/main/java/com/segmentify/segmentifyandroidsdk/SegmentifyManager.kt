@@ -91,6 +91,7 @@ object SegmentifyManager {
         this.configModel.device = "ANDROID"
         setBaseApiUrl()
         setAuthToken()
+        ConnectionManager.rebuildServices()
 
         if (clientPreferences?.getSessionId().isNullOrBlank()) {
             if (clientPreferences?.getUserId().isNullOrBlank())

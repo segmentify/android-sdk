@@ -66,25 +66,6 @@ object ConnectionManager {
                 return@Interceptor chain?.proceed(request!!)!!
             }
 
-            /*if(SegmentifyManager.clientPreferences != null && SegmentifyManager.clientPreferences!!.getSessionId().isNullOrBlank()){
-                val getSessionIdRequest = Request.Builder().header("Content-Type", "application/json").header("Accept", "application/json").get().url(BuildConfig.KEY_ADDRESS + "get/key?count=1").build()
-                var response = getSyncClient().newCall(getSessionIdRequest).execute()
-                val listType = object : TypeToken<ArrayList<String>>() {}.type
-                var sessionIdResponse = Gson().fromJson<ArrayList<String>>(response.body().toString(), listType)
-
-                SegmentifyManager.clientPreferences?.setSessionId(sessionIdResponse[0])
-            }
-
-            if(SegmentifyManager.clientPreferences != null && SegmentifyManager.clientPreferences!!.getUserId().isNullOrBlank()){
-                val getUserIDSessionIdRequest = Request.Builder().header("Content-Type", "application/json").header("Accept", "application/json").get().url(BuildConfig.KEY_ADDRESS + "get/key?count=2").build()
-                var response = getSyncClient().newCall(getUserIDSessionIdRequest).execute()
-                val listType = object : TypeToken<ArrayList<String>>() {}.type
-                var userIdSessionIdResponse = Gson().fromJson<ArrayList<String>>(response.body().toString(), listType)
-
-                SegmentifyManager.clientPreferences?.setUserId(userIdSessionIdResponse[0])
-                SegmentifyManager.clientPreferences?.setSessionId(userIdSessionIdResponse[1])
-            }*/
-
             chain.proceed(newRequest)
         })
         httpClient.connectTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
@@ -120,17 +101,6 @@ object ConnectionManager {
                 e.printStackTrace()
                 return@Interceptor chain.proceed(request)
             }
-
-            // Log the full request
-            val buffer = okio.Buffer()
-            newRequest.body()?.writeTo(buffer)
-            val bodyString = buffer.readUtf8()
-            Log.d("PushRequest", "=== FULL PUSH REQUEST ===")
-            Log.d("PushRequest", "URL: ${newRequest.url()}")
-            Log.d("PushRequest", "Method: ${newRequest.method()}")
-            Log.d("PushRequest", "Headers: ${newRequest.headers()}")
-            Log.d("PushRequest", "Body: $bodyString")
-            Log.d("PushRequest", "=========================")
 
             chain.proceed(newRequest)
         })
