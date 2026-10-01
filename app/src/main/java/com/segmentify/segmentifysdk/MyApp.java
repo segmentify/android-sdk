@@ -9,8 +9,8 @@ public class MyApp extends Application {
     public void onCreate() {
         super.onCreate();
         // if you are using push module make sure to call SegmentifyManager.Instance.setPushConfig first
-        SegmentifyManager.INSTANCE.setPushConfig("https://psh2.segmentify.com");
-        SegmentifyManager.INSTANCE.config(this, "3c9e211a-d049-43d5-aa4a-f98b7e66e482", "https://gandalf.segmentify.com", "demosfy.com");
+        SegmentifyManager.INSTANCE.setPushConfig("https://push-notification-api.preprod.cloud.unifonic.com", "ZDYwOTA5YzgtMzM5ZS00NGUxLWFiNjgtZDAzMzVmOThiZDRiOkNTNzVkQzdlbXVPYk9rMWcybGs2UEFJUVVpRDNSdnRS");
+        SegmentifyManager.INSTANCE.config(this, "2031ce11-59e2-aec3-39f2-3adc60252339", "https://push-notification-api.preprod.cloud.unifonic.com", "push-sfy-web.int.oci.ruh.dev.unifonic.com", "ZTc5NmJlNGUtNjExNi00Y2Y4LTgyYjgtNDIxMGEzNjNkMWJlOlhtU09WbjJhMjNVOGhjV0xDNVlraDd3S0ZYblBpZUhx");
         SegmentifyManager.INSTANCE.setSessionKeepSecond(86400);
         SegmentifyManager.INSTANCE.logStatus(true);
     }

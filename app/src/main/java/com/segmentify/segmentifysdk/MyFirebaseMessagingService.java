@@ -14,6 +14,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import android.app.Notification;
+import android.graphics.drawable.Icon;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -29,6 +31,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
+
+import android.net.Uri;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
@@ -47,15 +51,31 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String body = data.get("message");
             String deepLink = data.get("deeplink");
             String image = data.get("image");
+            String icon = data.get("icon");
 
             if (title != null || body != null) {
-                sendNotification(body, title, deepLink, image);
+                sendNotification(body, title, deepLink, image, icon);
             }
 
             if (data.containsKey("instanceId")) {
+                String instanceId = data.get("instanceId");
+
+                // Resolve interactionId: utm_content from deeplink, fallback to instanceId
+                String interactionId = null;
+                if (deepLink != null && !deepLink.isEmpty()) {
+                    try {
+                        interactionId = Uri.parse(deepLink).getQueryParameter("utm_content");
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (interactionId == null || interactionId.isEmpty()) {
+                    interactionId = instanceId;
+                }
+
                 NotificationModel model = new NotificationModel();
                 model.setType(NotificationType.VIEW);
-                model.setInstanceId(data.get("instanceId"));
+                model.setInstanceId(instanceId);
+                model.setInteractionId(interactionId);
                 SegmentifyManager.INSTANCE.sendNotificationInteraction(model);
             }
         }
@@ -77,10 +97,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void sendRegistrationToServer(String token) {
-        // TODO: Implement this method to send token to your app server.
+        if (SegmentifyManager.INSTANCE.getClientPreferences() != null) {
+            SegmentifyManager.INSTANCE.getClientPreferences().setDeviceToken(token);
+        }
     }
 
-    private void sendNotification(String messageBody, String title, String deepLink, String image) {
+    private void sendNotification(String messageBody, String title, String deepLink, String image, String icon) {
         try {
             Intent intent = new Intent(this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -102,17 +124,31 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
+            Log.d(TAG, "Icon URL: " + icon);
+            Log.d(TAG, "Image URL: " + image);
+            Bitmap iconBitmap = getBitmapFromUrl(icon);
+            Log.d(TAG, "Icon bitmap downloaded: " + (iconBitmap != null ? iconBitmap.getWidth() + "x" + iconBitmap.getHeight() : "null"));
+            Bitmap imageBitmap = getBitmapFromUrl(image);
+            Log.d(TAG, "Image bitmap downloaded: " + (imageBitmap != null ? imageBitmap.getWidth() + "x" + imageBitmap.getHeight() : "null"));
+
             NotificationCompat.Builder notificationBuilder =
                     new NotificationCompat.Builder(this, channelId)
-                            .setSmallIcon(R.mipmap.ic_launcher)
                             .setContentTitle(title != null ? title : "Notification")
                             .setContentText(messageBody)
+                            .setSmallIcon(R.drawable.ic_stat_ic_notification)
                             .setAutoCancel(true)
                             .setSound(defaultSoundUri)
                             .setContentIntent(pendingIntent)
-                            .setStyle(new NotificationCompat.BigPictureStyle()
-                                    .bigPicture(getBitmapFromUrl(image)))
                             .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+            if (iconBitmap != null) {
+                notificationBuilder.setLargeIcon(iconBitmap);
+            }
+
+            if (imageBitmap != null) {
+                notificationBuilder.setStyle(new NotificationCompat.BigPictureStyle()
+                        .bigPicture(imageBitmap));
+            }
 
             NotificationManager notificationManager =
                     (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -127,8 +163,22 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 channel.enableVibration(true);
                 notificationManager.createNotificationChannel(channel);
             }
-            notificationManager.notify(requestCode, notificationBuilder.build());
-            Log.d("MyFirebaseMsgService", "Bildirim oluşturma komutu gönderildi. ID: " + requestCode);
+
+            Notification notification = notificationBuilder.build();
+            if (iconBitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    Notification.Builder platformBuilder = Notification.Builder.recoverBuilder(this, notification);
+                    platformBuilder.setSmallIcon(Icon.createWithBitmap(iconBitmap));
+                    notification = platformBuilder.build();
+                    Log.d(TAG, "Small icon set from bitmap successfully");
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to set bitmap small icon", e);
+                }
+            } else {
+                Log.d(TAG, "Skipping bitmap small icon: iconBitmap=" + (iconBitmap != null) + ", SDK=" + Build.VERSION.SDK_INT);
+            }
+            notificationManager.notify(requestCode, notification);
+            Log.d(TAG, "Notification sent. ID: " + requestCode);
         } catch (Exception e) {
             Log.e("MyFirebaseMsgService", "Bildirim oluşturulurken hata: " + e.getMessage());
             e.printStackTrace();
@@ -136,15 +186,30 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private Bitmap getBitmapFromUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            Log.w(TAG, "getBitmapFromUrl: URL is null or empty");
+            return null;
+        }
         try {
+            Log.d(TAG, "getBitmapFromUrl: downloading " + imageUrl);
             URL url = new URL(imageUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setDoInput(true);
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
             connection.connect();
+            int responseCode = connection.getResponseCode();
+            Log.d(TAG, "getBitmapFromUrl: response code " + responseCode);
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                Log.e(TAG, "getBitmapFromUrl: HTTP error " + responseCode);
+                return null;
+            }
             InputStream input = connection.getInputStream();
-            return BitmapFactory.decodeStream(input);
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            Log.d(TAG, "getBitmapFromUrl: bitmap=" + (bitmap != null ? bitmap.getWidth() + "x" + bitmap.getHeight() : "null (decode failed)"));
+            return bitmap;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "getBitmapFromUrl: failed for " + imageUrl, e);
             return null;
         }
     }
