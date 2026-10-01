@@ -28,7 +28,7 @@ object ConnectionManager {
     init {
         val logging = HttpLoggingInterceptor()
 
-        if (SegmentifyManager.clientPreferences?.isLogVisible()!!) {
+        if (SegmentifyManager.clientPreferences != null && SegmentifyManager.clientPreferences!!.isLogVisible()) {
             logging.level = HttpLoggingInterceptor.Level.BODY
         } else {
             logging.level = HttpLoggingInterceptor.Level.NONE
@@ -138,21 +138,33 @@ object ConnectionManager {
         pushHttpClient.readTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
         pushClient = pushHttpClient.build()
 
-        val keyService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl() ?: "")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
+        val apiUrl = SegmentifyManager.clientPreferences?.getApiUrl()
+        if (!apiUrl.isNullOrBlank()) {
+            val keyService = Retrofit.Builder()
+                    .baseUrl(apiUrl)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .client(client)
+                    .build()
 
-        userSessionFactory = keyService.create(UserSessionFactory::class.java)
+            userSessionFactory = keyService.create(UserSessionFactory::class.java)
 
-        val eventService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl() ?: "")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
+            val eventService = Retrofit.Builder()
+                    .baseUrl(apiUrl)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .client(client)
+                    .build()
 
-        eventFactory = eventService.create(EventFactory::class.java)
+            eventFactory = eventService.create(EventFactory::class.java)
+        } else {
+            // Provide a dummy factory if not initialized yet, will be rebuilt in rebuildServices
+            val dummyRetrofit = Retrofit.Builder()
+                    .baseUrl("http://localhost/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .client(client)
+                    .build()
+            userSessionFactory = dummyRetrofit.create(UserSessionFactory::class.java)
+            eventFactory = dummyRetrofit.create(EventFactory::class.java)
+        }
 
         if (SegmentifyManager.configModel.dataCenterUrlPush != null) {
             val pushService = Retrofit.Builder()
@@ -179,19 +191,22 @@ object ConnectionManager {
     }
 
     fun rebuildServices() {
-        val eventService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl() ?: "")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
-        eventFactory = eventService.create(EventFactory::class.java)
+        val apiUrl = SegmentifyManager.clientPreferences?.getApiUrl()
+        if (!apiUrl.isNullOrBlank()) {
+            val eventService = Retrofit.Builder()
+                    .baseUrl(apiUrl)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .client(client)
+                    .build()
+            eventFactory = eventService.create(EventFactory::class.java)
 
-        val keyService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl() ?: "")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
-        userSessionFactory = keyService.create(UserSessionFactory::class.java)
+            val keyService = Retrofit.Builder()
+                    .baseUrl(apiUrl)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .client(client)
+                    .build()
+            userSessionFactory = keyService.create(UserSessionFactory::class.java)
+        }
 
         if (SegmentifyManager.configModel.dataCenterUrlPush != null) {
             val pushService = Retrofit.Builder()
