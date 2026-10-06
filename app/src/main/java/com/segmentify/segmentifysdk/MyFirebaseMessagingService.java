@@ -51,25 +51,25 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String image = data.get("image");
             String icon = "https://img.segmentify.com/52f397e3-505c-409c-acb8-67076ecbb664/u/ca6845b0-8842-4e71-92e5-36a0be5548ef.png";
 
-            if (title != null || body != null) {
-                sendNotification(body, title, deepLink, image, icon);
+            String instanceId = data.get("instanceId");
+
+            // Resolve interactionId: utm_content from deeplink, fallback to instanceId
+            String interactionId = null;
+            if (deepLink != null && !deepLink.isEmpty()) {
+                try {
+                    interactionId = Uri.parse(deepLink).getQueryParameter("utm_content");
+                } catch (Exception ignored) {
+                }
+            }
+            if (interactionId == null || interactionId.isEmpty()) {
+                interactionId = instanceId;
             }
 
-            if (data.containsKey("instanceId")) {
-                String instanceId = data.get("instanceId");
+            if (title != null || body != null) {
+                sendNotification(body, title, deepLink, image, icon, instanceId, interactionId);
+            }
 
-                // Resolve interactionId: utm_content from deeplink, fallback to instanceId
-                String interactionId = null;
-                if (deepLink != null && !deepLink.isEmpty()) {
-                    try {
-                        interactionId = Uri.parse(deepLink).getQueryParameter("utm_content");
-                    } catch (Exception ignored) {
-                    }
-                }
-                if (interactionId == null || interactionId.isEmpty()) {
-                    interactionId = instanceId;
-                }
-
+            if (instanceId != null && !instanceId.isEmpty()) {
                 NotificationModel model = new NotificationModel();
                 model.setType(NotificationType.VIEW);
                 model.setInstanceId(instanceId);
@@ -100,7 +100,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
     }
 
-    private void sendNotification(String messageBody, String title, String deepLink, String image, String icon) {
+    private void sendNotification(String messageBody, String title, String deepLink, String image, String icon, String instanceId, String interactionId) {
         try {
             Intent intent = new Intent(this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -111,6 +111,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
             if (image != null && !image.isEmpty()) {
                 intent.putExtra("pushimage", image);
+            }
+
+            if (instanceId != null && !instanceId.isEmpty()) {
+                intent.putExtra("instanceId", instanceId);
+            }
+
+            if (interactionId != null && !interactionId.isEmpty()) {
+                intent.putExtra("interactionId", interactionId);
             }
 
             int requestCode = (int) System.currentTimeMillis();

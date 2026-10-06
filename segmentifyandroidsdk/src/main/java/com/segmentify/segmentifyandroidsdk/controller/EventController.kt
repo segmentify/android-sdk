@@ -245,11 +245,18 @@ internal object EventController {
     }
 
     fun sendInteractionEvent(interactionModel: InteractionModel){
+        SegmentifyLogger.printSuccessLog("Interaction event triggered (type: ${interactionModel.type}, instanceId: ${interactionModel.instanceId}, userId: ${interactionModel.userId}, sessionId: ${interactionModel.sessionId})")
 
         if(!interactionModel.userId.isNullOrEmpty() && !interactionModel.sessionId.isNullOrEmpty()){
             ConnectionManager.getEventFactory().sendInteractionEvent(interactionModel)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
+                            SegmentifyLogger.printSuccessLog("Interaction event sent successfully (type: ${interactionModel.type}, instanceId: ${interactionModel.instanceId})")
+                        }
+
+                        override fun onFailure(call: retrofit2.Call<Any>, t: Throwable) {
+                            super.onFailure(call, t)
+                            SegmentifyLogger.printErrorLog("Interaction event failed (type: ${interactionModel.type}, instanceId: ${interactionModel.instanceId}), error: ${t.message}")
                         }
                     })
         }

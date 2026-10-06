@@ -12,6 +12,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.segmentify.segmentifyandroidsdk.SegmentifyManager
+import com.segmentify.segmentifyandroidsdk.model.NotificationModel
+import com.segmentify.segmentifyandroidsdk.model.NotificationType
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,6 +36,20 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) {
             return
+        }
+
+        // Track notification click if instanceId is present
+        val instanceId = intent.getStringExtra("instanceId")
+        if (!instanceId.isNullOrEmpty()) {
+            val interactionId = intent.getStringExtra("interactionId") ?: instanceId
+            val clickModel = NotificationModel()
+            clickModel.type = NotificationType.CLICK
+            clickModel.instanceId = instanceId
+            clickModel.interactionId = interactionId
+            SegmentifyManager.sendNotificationInteraction(clickModel)
+            Log.d(TAG, "Notification click tracked for instanceId: $instanceId")
+            // Remove the extra so we don't track again on config change
+            intent.removeExtra("instanceId")
         }
 
         if (intent.hasExtra("deeplink")) {

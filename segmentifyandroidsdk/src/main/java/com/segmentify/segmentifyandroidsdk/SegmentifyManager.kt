@@ -854,6 +854,11 @@ object SegmentifyManager {
                 SegmentifyLogger.printErrorLog("You must fill instanceId before accessing notification view event")
                 return
             }
+            // Log VIEW payload
+            val pushBaseUrl = configModel.dataCenterUrlPush ?: "(not set)"
+            val viewPayload = com.google.gson.Gson().toJson(notificationModel)
+            SegmentifyLogger.printSuccessLog("Notification VIEW endpoint: POST ${pushBaseUrl}/native/interaction/notification")
+            SegmentifyLogger.printSuccessLog("Notification VIEW payload: $viewPayload")
             // Keep existing Gimli call for view report counters
             PushController.sendNotificationInteraction(notificationModel)
         }
@@ -866,6 +871,9 @@ object SegmentifyManager {
                 clientPreferences?.setPushCampaignId(notificationModel.instanceId!!)
             }
 
+            val apiBaseUrl = configModel.dataCenterUrl ?: "(not set)"
+            val gson = com.google.gson.Gson()
+
             // Web parity: type: "push-click" for Click metric in the push report
             val clickInteractionModel = InteractionModel()
             clickInteractionModel.eventName = Constant.interactionEventName
@@ -873,6 +881,8 @@ object SegmentifyManager {
             clickInteractionModel.instanceId = notificationModel.instanceId
             clickInteractionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
             clickInteractionModel.nextPage = false
+            SegmentifyLogger.printSuccessLog("Notification CLICK (push-click) endpoint: POST ${apiBaseUrl}/add/events/v1.json")
+            SegmentifyLogger.printSuccessLog("Notification CLICK (push-click) payload: ${gson.toJson(clickInteractionModel)}")
             EventController.sendInteractionEvent(clickInteractionModel)
 
             // Attribution stamp: type: "push" that stamps the user record for basket/revenue
@@ -882,6 +892,8 @@ object SegmentifyManager {
             attributionInteractionModel.instanceId = notificationModel.instanceId
             attributionInteractionModel.interactionId = notificationModel.interactionId ?: notificationModel.instanceId
             attributionInteractionModel.nextPage = false
+            SegmentifyLogger.printSuccessLog("Notification CLICK (push) endpoint: POST ${apiBaseUrl}/add/events/v1.json")
+            SegmentifyLogger.printSuccessLog("Notification CLICK (push) payload: ${gson.toJson(attributionInteractionModel)}")
             EventController.sendInteractionEvent(attributionInteractionModel)
 
             // For Option B: stop calling PushController.sendNotificationInteraction (Gimli) for clicks
