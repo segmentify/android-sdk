@@ -133,4 +133,27 @@ class RecommendationResponseParserTest {
         assertTrue(result.isEmpty())
         assertTrue(impressions.isEmpty())
     }
+
+    @Test
+    fun malformedProductIsSkippedAndTheRestIsKept() {
+        val oneBadProduct = recommendation(
+            recommendedProducts = """{"$dynamicSource":[{"productId":"bad","price":"not-a-number"},{"productId":"p2"},{"productId":"p3"}]}"""
+        )
+
+        val result = parse(envelope(oneBadProduct))
+
+        assertEquals(listOf("p2", "p3"), productIds(result[0]))
+    }
+
+    @Test
+    fun malformedDynamicItemsKeepStaticProducts() {
+        val brokenDynamicItems = recommendation(
+            dynamicItemsJson = "not json",
+            recommendedProducts = """{"RECOMMENDATION_SOURCE_STATIC_ITEMS":[{"productId":"s1"}]}"""
+        )
+
+        val result = parse(envelope(brokenDynamicItems))
+
+        assertEquals(listOf("s1"), productIds(result[0]))
+    }
 }
