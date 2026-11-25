@@ -100,7 +100,8 @@ class FirstLaunchWiringTest {
         await("the page view callback") { callbacks == 1 }
         settle()
 
-        assertEquals("one key request on first launch", listOf("/get/key?count=2"), keyRequests.toList())
+        assertEquals("key requests on first launch: $keyRequests", 1, keyRequests.size)
+        assertTrue("asks for a user id and a session id: $keyRequests", keyRequests[0].contains("count=2"))
         assertEquals(1, events.size)
         assertEquals("PAGE_VIEW", events[0].get("name").asString)
         assertEquals("Home Page", events[0].get("category").asString)

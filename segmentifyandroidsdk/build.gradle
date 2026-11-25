@@ -38,6 +38,13 @@ android {
         unitTests.returnDefaultValues = true
         // Robolectric tests read the merged manifest and resources.
         unitTests.includeAndroidResources = true
+        // Print the assertion message of a failed test in the build log.
+        unitTests.all {
+            testLogging {
+                events "failed"
+                exceptionFormat "full"
+            }
+        }
     }
 
     compileOptions {
