@@ -1,8 +1,6 @@
 package com.segmentify.segmentifyandroidsdk.controller
 
-import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
-import com.google.gson.reflect.TypeToken
 import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.model.*
 import com.segmentify.segmentifyandroidsdk.model.faceted.SearchFacetedEventResponseModel
@@ -14,8 +12,6 @@ import com.segmentify.segmentifyandroidsdk.utils.CdpUserProfileStore
 import com.segmentify.segmentifyandroidsdk.utils.Constant
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyCallback
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
-import org.json.JSONArray
-import org.json.JSONObject
 
 internal object EventController {
 

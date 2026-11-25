@@ -63,8 +63,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
     testImplementation 'junit:junit:4.13.2'
-    // android.jar ships org.json as throwing stubs; unit tests need a real implementation.
-    testImplementation 'org.json:json:20240303'
     androidTestImplementation 'androidx.test:runner:1.7.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
 }
