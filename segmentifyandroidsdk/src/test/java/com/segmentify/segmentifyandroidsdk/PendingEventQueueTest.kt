@@ -176,4 +176,23 @@ class PendingEventQueueTest {
         assertEquals(listOf("pageView:u1:s1"), sent)
         assertEquals(0, idRequests)
     }
+
+    // SFY-28788
+
+    @Test
+    fun droppedEventIsToldSo() {
+        val queue = queue(maxPending = 1)
+        val dropped = mutableListOf<String>()
+
+        queue.submit(event("first"), onDropped = { dropped.add("first") })
+        queue.submit(event("second"), onDropped = { dropped.add("second") })
+
+        assertEquals(listOf("first"), dropped)
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("second:u1:s1"), sent)
+        assertEquals(listOf("first"), dropped)
+    }
 }

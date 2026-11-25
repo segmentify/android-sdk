@@ -1,6 +1,7 @@
 package com.segmentify.segmentifyandroidsdk
 
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import okhttp3.Request
 import okhttp3.ResponseBody
 import okio.Timeout
@@ -24,6 +25,13 @@ class NetworkCallbackTest {
 
         override fun onGiveUp() {
             giveUps++
+        }
+
+        val errors = mutableListOf<SegmentifyException>()
+
+        override fun onGiveUp(error: SegmentifyException) {
+            errors.add(error)
+            super.onGiveUp(error)
         }
     }
 
@@ -112,5 +120,39 @@ class NetworkCallbackTest {
         callback.onResponse(null, serverError())
 
         assertEquals(1, callback.giveUps)
+    }
+
+    // SFY-28788: the reason travels with the give-up.
+
+    @Test
+    fun httpErrorIsReportedWithItsStatus() {
+        val callback = RecordingCallback()
+
+        callback.onResponse(FakeCall(), serverError())
+
+        assertEquals(listOf<Int?>(500), callback.errors.map { it.httpStatus })
+        assertEquals(1, callback.giveUps)
+    }
+
+    @Test
+    fun transportFailureIsReportedWithItsCause() {
+        val callback = RecordingCallback()
+        val cause = IOException("offline")
+
+        callback.onFailure(FakeCall(), cause)
+
+        assertEquals(1, callback.errors.size)
+        assertEquals(null, callback.errors[0].httpStatus)
+        assertEquals(cause, callback.errors[0].cause)
+    }
+
+    @Test
+    fun emptySuccessBodyIsReportedAsAnError() {
+        val callback = RecordingCallback()
+
+        callback.onResponse(FakeCall(), Response.success<String>(null))
+
+        assertEquals(1, callback.errors.size)
+        assertEquals(0, callback.successes)
     }
 }

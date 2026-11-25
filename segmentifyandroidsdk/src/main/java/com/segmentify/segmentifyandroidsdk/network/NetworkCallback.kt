@@ -1,5 +1,6 @@
 package com.segmentify.segmentifyandroidsdk.network
 
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import retrofit2.Call
 import retrofit2.Callback
@@ -41,6 +42,11 @@ abstract class NetworkCallback<T> : Callback<T> {
 
     /** Called once when the request ends without a usable response and will not be retried. */
     open fun onGiveUp() {
+    }
+
+    /** Same moment as [onGiveUp], with the reason. Calls [onGiveUp] by default. */
+    open fun onGiveUp(error: SegmentifyException) {
+        onGiveUp()
     }
 
     override fun onFailure(call: Call<T>, t: Throwable) {

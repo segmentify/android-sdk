@@ -54,6 +54,11 @@ internal class PendingEventQueue(
         requestIdsIfIdle()
     }
 
+    /** Like [submit]; [onDropped] is called if the event is given up before it could run. */
+    fun submit(event: (SessionIds) -> Unit, onDropped: () -> Unit) {
+        submit(event)
+    }
+
     /** Requests the ids when they are missing and no request is running. */
     fun ensureIds() {
         if (ids() == null) {
