@@ -195,4 +195,23 @@ class PendingEventQueueTest {
         assertEquals(listOf("second:u1:s1"), sent)
         assertEquals(listOf("first"), dropped)
     }
+
+    @Test
+    fun failedIdRequestGivesUpEventsThatHaveSomeoneToTellAndKeepsTheOthers() {
+        val queue = queue()
+        val dropped = mutableListOf<String>()
+
+        queue.submit(event("pageView"), onDropped = { dropped.add("pageView") })
+        queue.submit(event("basket"))
+        queue.onIdsFailed()
+
+        assertEquals(listOf("pageView"), dropped)
+        assertTrue(sent.isEmpty())
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("basket:u1:s1"), sent)
+        assertEquals(listOf("pageView"), dropped)
+    }
 }
