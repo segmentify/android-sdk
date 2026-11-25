@@ -1,5 +1,6 @@
 package com.segmentify.segmentifyandroidsdk.network
 
+import com.segmentify.segmentifyandroidsdk.model.BackendResponse
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import retrofit2.Call
@@ -9,6 +10,7 @@ import retrofit2.Response
 abstract class NetworkCallback<T> : Callback<T> {
 
     private val TOTAL_RETRIES = 3
+    private val SUCCESS = "SUCCESS"
     private var retryCount = 0
 
     override fun onResponse(call: Call<T>?, response: Response<T>?) {
@@ -19,7 +21,12 @@ abstract class NetworkCallback<T> : Callback<T> {
 
         if (response.isSuccessful) {
             val body = response.body()
-            if (body != null) {
+            val refusal = refusalOf(body)
+            if (refusal != null) {
+                // The backend answers 200 even when it refuses an event; asking again
+                // would get the same answer, so this is not retried.
+                giveUp(SegmentifyException("The backend refused the request: $refusal", response.code(), null, refusal))
+            } else if (body != null) {
                 onSuccess(body)
             } else {
                 onEmptySuccess(SegmentifyException("Request successful but body is null", response.code()))
@@ -57,6 +64,16 @@ abstract class NetworkCallback<T> : Callback<T> {
 
     override fun onFailure(call: Call<T>, t: Throwable) {
         giveUp(SegmentifyException("Request failed: " + t.message, null, t))
+    }
+
+    /** The backend's statusCode when it is present and not SUCCESS. */
+    private fun refusalOf(body: Any?): String? {
+        val statusCode = when (body) {
+            is BackendResponse -> body.statusCode
+            is Map<*, *> -> body["statusCode"] as? String
+            else -> null
+        }
+        return if (statusCode == null || statusCode == SUCCESS) null else statusCode
     }
 
     private fun giveUp(error: SegmentifyException) {
