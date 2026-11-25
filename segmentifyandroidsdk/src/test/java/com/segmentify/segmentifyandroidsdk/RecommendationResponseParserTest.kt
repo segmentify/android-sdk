@@ -156,4 +156,56 @@ class RecommendationResponseParserTest {
 
         assertEquals(listOf("s1"), productIds(result[0]))
     }
+
+    // Review follow-ups on SFY-28786.
+
+    @Test
+    fun duplicateDoesNotLetASourceExceedItemCount() {
+        val first = recommendation()
+        val second = recommendation(
+            recommendedProducts = """{"$dynamicSource":[{"productId":"b"},{"productId":"p1"},{"productId":"c"},{"productId":"d"}]}"""
+        )
+
+        val result = parse(envelope(first, second))
+
+        assertEquals(listOf("p1", "p2"), productIds(result[0]))
+        assertEquals(listOf("b", "c"), productIds(result[1]))
+    }
+
+    @Test
+    fun dynamicSourceDoesNotRepeatAStaticProduct() {
+        val staticAndDynamic = recommendation(
+            recommendedProducts = """{"RECOMMENDATION_SOURCE_STATIC_ITEMS":[{"productId":"p1"}],"$dynamicSource":$threeProducts}"""
+        )
+
+        val result = parse(envelope(staticAndDynamic))
+
+        assertEquals(listOf("p1", "p2", "p3"), productIds(result[0]))
+    }
+
+    @Test
+    fun staticProductIsKeptEvenIfAnEarlierWidgetShowedIt() {
+        val staticOnly = recommendation(
+            dynamicItemsJson = null,
+            recommendedProducts = """{"RECOMMENDATION_SOURCE_STATIC_ITEMS":[{"productId":"p1"}]}"""
+        )
+
+        val result = parse(envelope(recommendation(), staticOnly))
+
+        assertEquals(listOf("p1"), productIds(result[1]))
+    }
+
+    @Test
+    fun productParamsAndParamsListAreParsed() {
+        val withParams = recommendation(
+            recommendedProducts = """{"$dynamicSource":[{"productId":"p1","stockCount":3,"lastUpdateTime":1700000000000,"params":{"color":"red"},"paramsList":{"sizes":["S","M"]}}]}"""
+        )
+
+        val product = parse(envelope(withParams))[0].products!![0]
+
+        assertEquals("red", product.params!!["color"])
+        assertEquals(listOf("S", "M"), product.paramsList!!["sizes"])
+        assertEquals(3, product.stockCount)
+        assertEquals(1700000000000L, product.lastUpdateTime)
+    }
 }
