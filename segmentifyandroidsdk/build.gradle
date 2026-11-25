@@ -33,6 +33,11 @@ android {
         abortOnError = false
     }
 
+    testOptions {
+        // android.util.Log and friends are stubs on the JVM; return defaults instead of throwing.
+        unitTests.returnDefaultValues = true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11

@@ -1,7 +1,6 @@
 package com.segmentify.segmentifyandroidsdk.model
 
 import com.google.gson.annotations.SerializedName
-import org.json.JSONObject
 
 class ParamsModel {
     var notificationTitle : String? = null
