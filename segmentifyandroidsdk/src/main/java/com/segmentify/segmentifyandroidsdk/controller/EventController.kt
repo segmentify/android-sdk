@@ -11,6 +11,7 @@ import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
 import com.segmentify.segmentifyandroidsdk.utils.CdpUserProfileStore
 import com.segmentify.segmentifyandroidsdk.utils.Constant
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyCallback
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 
 internal object EventController {
@@ -20,12 +21,12 @@ internal object EventController {
      * created before the ids arrived (first launch) wait for them instead of
      * being dropped; ids set on the model by the caller are never overwritten.
      */
-    private fun whenSessionReady(event: SegmentifyObject, send: () -> Unit) {
+    private fun whenSessionReady(event: SegmentifyObject, onError: ((Throwable) -> Unit)? = null, send: () -> Unit) {
         if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
             send()
             return
         }
-        KeyController.pendingEvents.submit { ids ->
+        KeyController.pendingEvents.submit({ ids ->
             if (event.userId.isNullOrEmpty()) {
                 event.userId = ids.userId
             }
@@ -33,17 +34,25 @@ internal object EventController {
                 event.sessionId = ids.sessionId
             }
             send()
-        }
+        }, {
+            if (onError != null) {
+                onError(SegmentifyException("The event was given up before a user id and session id were available"))
+            }
+        })
     }
 
     fun sendPageView(pageModel : PageModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>){
 
-        whenSessionReady(pageModel) {
+        whenSessionReady(pageModel, { segmentifyCallback.onError(it) }) {
 
             ConnectionManager.getEventFactory().sendPageView(pageModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }
@@ -51,11 +60,15 @@ internal object EventController {
     }
 
     fun sendSearchView(pageModel: SearchPageModel, segmentifyCallback: SegmentifyCallback<SearchResponseModel>){
-        whenSessionReady(pageModel) {
+        whenSessionReady(pageModel, { segmentifyCallback.onError(it) }) {
             ConnectionManager.getEventFactory().sendSearchView(pageModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<SearchEventResponseModel>(){
                         override fun onSuccess(response: SearchEventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatSearchResponse(response))
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }
@@ -75,12 +88,16 @@ internal object EventController {
     }
 
     fun sendFacetedSearchView(pageModel: SearchFacetedPageModel, segmentifyCallback: SegmentifyCallback<SearchFacetedResponseModel>){
-        whenSessionReady(pageModel) {
+        whenSessionReady(pageModel, { segmentifyCallback.onError(it) }) {
             ConnectionManager.getEventFactory()
                 .sendFacetedSearchView(pageModel, SegmentifyManager.configModel.apiKey!!)
                 .enqueue(object : NetworkCallback<SearchFacetedEventResponseModel>() {
                     override fun onSuccess(response: SearchFacetedEventResponseModel) {
                         segmentifyCallback.onDataLoaded(reformatSearchFacetedResponse(response))
+                    }
+
+                    override fun onGiveUp(error: SegmentifyException) {
+                        segmentifyCallback.onError(error)
                     }
                 })
         }
@@ -98,13 +115,17 @@ internal object EventController {
 
     fun sendCustomEvent(customEventModel: CustomEventModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
 
-        whenSessionReady(customEventModel) {
+        whenSessionReady(customEventModel, { segmentifyCallback.onError(it) }) {
 
 
             ConnectionManager.getEventFactory().sendCustomEvent(customEventModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>() {
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }
@@ -115,13 +136,17 @@ internal object EventController {
     fun sendProductView(productModel: ProductModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>){
 
 
-        whenSessionReady(productModel) {
+        whenSessionReady(productModel, { segmentifyCallback.onError(it) }) {
 
 
             ConnectionManager.getEventFactory().sendProductView(productModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>() {
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }
@@ -142,11 +167,15 @@ internal object EventController {
 
     fun sendCheckout(checkoutModel: CheckoutModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
 
-        whenSessionReady(checkoutModel) {
+        whenSessionReady(checkoutModel, { segmentifyCallback.onError(it) }) {
             ConnectionManager.getEventFactory().sendPurchase(checkoutModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
                         override fun onSuccess(response: EventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatResponse(response))
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }
@@ -201,12 +230,16 @@ internal object EventController {
 
     fun sendChangeUser(userChangeModel: UserChangeModel,segmentifyCallback : SegmentifyCallback<Boolean>){
 
-        whenSessionReady(userChangeModel) {
+        whenSessionReady(userChangeModel, { segmentifyCallback.onError(it) }) {
 
             ConnectionManager.getEventFactory().sendChangeUser(userChangeModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                             segmentifyCallback.onDataLoaded(true)
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
+                            segmentifyCallback.onError(error)
                         }
                     })
         }

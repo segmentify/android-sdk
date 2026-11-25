@@ -18,7 +18,9 @@ internal class PendingEventQueue(
 ) {
 
     private val lock = Any()
-    private val pending = ArrayDeque<(SessionIds) -> Unit>()
+    private class Waiting(val event: (SessionIds) -> Unit, val onDropped: (() -> Unit)?)
+
+    private val pending = ArrayDeque<Waiting>()
     private var requesting = false
 
     /**
@@ -27,6 +29,11 @@ internal class PendingEventQueue(
      * are requested, unless a request is already running.
      */
     fun submit(event: (SessionIds) -> Unit) {
+        submit(event, null)
+    }
+
+    /** Like [submit]; [onDropped] is called if the event is given up before it could run. */
+    fun submit(event: (SessionIds) -> Unit, onDropped: (() -> Unit)?) {
         val current = ids()
         if (current != null) {
             event(current)
@@ -36,27 +43,24 @@ internal class PendingEventQueue(
         // Read the ids again under the lock: they may have arrived, and
         // onIdsAvailable() may already have run, since the read above. Enqueueing
         // then would start a second request and replace a fresh session id.
+        var dropped: Waiting? = null
         val arrivedMeanwhile = synchronized(lock) {
             val latest = ids()
             if (latest == null) {
                 if (pending.size >= maxPending) {
-                    pending.removeFirst()
+                    dropped = pending.removeFirst()
                     log("Dropped the oldest waiting event: $maxPending events are waiting for a user id and session id")
                 }
-                pending.addLast(event)
+                pending.addLast(Waiting(event, onDropped))
             }
             latest
         }
+        dropped?.onDropped?.invoke()
         if (arrivedMeanwhile != null) {
             event(arrivedMeanwhile)
             return
         }
         requestIdsIfIdle()
-    }
-
-    /** Like [submit]; [onDropped] is called if the event is given up before it could run. */
-    fun submit(event: (SessionIds) -> Unit, onDropped: () -> Unit) {
-        submit(event)
     }
 
     /** Requests the ids when they are missing and no request is running. */
@@ -69,7 +73,7 @@ internal class PendingEventQueue(
     /** The owner stored new ids: send everything that was waiting, in order. */
     fun onIdsAvailable() {
         val current = ids()
-        val ready: List<(SessionIds) -> Unit> = synchronized(lock) {
+        val ready: List<Waiting> = synchronized(lock) {
             requesting = false
             if (current == null) {
                 emptyList()
@@ -80,9 +84,9 @@ internal class PendingEventQueue(
         if (current != null) {
             // This runs inside the key request's callback: one failing event must
             // neither stop the others nor escape into the HTTP client's thread.
-            for (event in ready) {
+            for (waiting in ready) {
                 try {
-                    event(current)
+                    waiting.event(current)
                 } catch (e: Exception) {
                     log("A waiting event could not be sent: " + e.message)
                 }

@@ -110,6 +110,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
 
@@ -119,6 +123,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: SearchResponseModel) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
    
@@ -127,6 +135,10 @@ object SegmentifyManager {
         EventController.sendFacetedSearchView(pageModel, object : SegmentifyCallback<SearchFacetedResponseModel>{
             override fun onDataLoaded(data: SearchFacetedResponseModel) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -199,6 +211,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
 
@@ -210,6 +226,10 @@ object SegmentifyManager {
         EventController.sendCustomEvent(customEventModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -251,6 +271,10 @@ object SegmentifyManager {
         EventController.sendProductView(productModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -311,6 +335,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
 
@@ -331,6 +359,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -356,6 +388,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -384,6 +420,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
 
@@ -401,6 +441,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -421,6 +465,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -445,6 +493,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
@@ -520,6 +572,10 @@ object SegmentifyManager {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
             }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
+            }
         })
     }
 
@@ -535,6 +591,10 @@ object SegmentifyManager {
         EventController.sendCheckout(checkoutModel, object : SegmentifyCallback<ArrayList<RecommendationModel>> {
             override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
                 segmentifyCallback.onDataLoaded(data)
+            }
+
+            override fun onError(error: Throwable) {
+                segmentifyCallback.onError(error)
             }
         })
     }
