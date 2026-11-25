@@ -94,10 +94,23 @@ internal class PendingEventQueue(
         }
     }
 
-    /** The id request failed: keep the events; the next event or [ensureIds] retries. */
+    /**
+     * The id request failed. Events whose caller can be told are given up and
+     * told so; the others stay, and the next event or [ensureIds] retries.
+     */
     fun onIdsFailed() {
-        synchronized(lock) {
+        val givenUp: List<Waiting> = synchronized(lock) {
             requesting = false
+            val answerable = pending.filter { it.onDropped != null }
+            pending.removeAll(answerable)
+            answerable
+        }
+        for (waiting in givenUp) {
+            try {
+                waiting.onDropped?.invoke()
+            } catch (e: Exception) {
+                log("A waiting event could not be told that it was given up: " + e.message)
+            }
         }
     }
 
