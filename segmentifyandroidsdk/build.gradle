@@ -36,6 +36,15 @@ android {
     testOptions {
         // android.util.Log and friends are stubs on the JVM; return defaults instead of throwing.
         unitTests.returnDefaultValues = true
+        // Robolectric tests read the merged manifest and resources.
+        unitTests.includeAndroidResources = true
+        // Print the assertion message of a failed test in the build log.
+        unitTests.all {
+            testLogging {
+                events "failed"
+                exceptionFormat "full"
+            }
+        }
     }
 
     compileOptions {
@@ -63,6 +72,11 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
     testImplementation 'junit:junit:4.13.2'
+    // End-to-end tests of the SDK singletons: real SharedPreferences and main
+    // looper from Robolectric, a local HTTP server instead of the backend.
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    // Same version as the OkHttp that Retrofit 2.11.0 brings in.
+    testImplementation 'com.squareup.okhttp3:mockwebserver:3.14.9'
     androidTestImplementation 'androidx.test:runner:1.7.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
 }

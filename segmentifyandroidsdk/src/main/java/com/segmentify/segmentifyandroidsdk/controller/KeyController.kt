@@ -24,7 +24,10 @@ internal object KeyController {
         val dayBySecondsDifference = getDifferenceDays(date, Calendar.getInstance().timeInMillis)
         if (dayBySecondsDifference > SegmentifyManager.clientPreferences?.getSessionKeepSeconds()!!) {
             SegmentifyManager.clientPreferences?.setSavedDateforSession(calendar.timeInMillis)
-            getSessionId()
+            // Expired (or never stored): forget the session id. The caller then
+            // asks pendingEvents.ensureIds() for a new one, so there is a single
+            // key request and events sent meanwhile wait for it.
+            SegmentifyManager.clientPreferences?.setSessionId("")
         } else {
             SegmentifyManager.clientPreferences?.setSavedDateforSession(calendar.timeInMillis)
         }
