@@ -33,12 +33,23 @@ internal class PendingEventQueue(
             return
         }
 
-        synchronized(lock) {
-            if (pending.size >= maxPending) {
-                pending.removeFirst()
-                log("Dropped the oldest waiting event: $maxPending events are waiting for a user id and session id")
+        // Read the ids again under the lock: they may have arrived, and
+        // onIdsAvailable() may already have run, since the read above. Enqueueing
+        // then would start a second request and replace a fresh session id.
+        val arrivedMeanwhile = synchronized(lock) {
+            val latest = ids()
+            if (latest == null) {
+                if (pending.size >= maxPending) {
+                    pending.removeFirst()
+                    log("Dropped the oldest waiting event: $maxPending events are waiting for a user id and session id")
+                }
+                pending.addLast(event)
             }
-            pending.addLast(event)
+            latest
+        }
+        if (arrivedMeanwhile != null) {
+            event(arrivedMeanwhile)
+            return
         }
         requestIdsIfIdle()
     }
@@ -62,7 +73,15 @@ internal class PendingEventQueue(
             }
         }
         if (current != null) {
-            ready.forEach { it(current) }
+            // This runs inside the key request's callback: one failing event must
+            // neither stop the others nor escape into the HTTP client's thread.
+            for (event in ready) {
+                try {
+                    event(current)
+                } catch (e: Exception) {
+                    log("A waiting event could not be sent: " + e.message)
+                }
+            }
         }
     }
 
