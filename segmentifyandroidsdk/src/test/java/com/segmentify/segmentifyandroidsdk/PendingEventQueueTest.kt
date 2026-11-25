@@ -214,4 +214,31 @@ class PendingEventQueueTest {
         assertEquals(listOf("basket:u1:s1"), sent)
         assertEquals(listOf("pageView"), dropped)
     }
+
+    // Code review follow-ups on SFY-28788.
+
+    @Test
+    fun failedIdRequestPassesItsReasonToTheWaitingCallback() {
+        val queue = queue()
+        val reasons = mutableListOf<Throwable?>()
+        val reason = IllegalStateException("key request failed")
+
+        queue.submit(event("pageView"), onDropped = { reasons.add(it) })
+        queue.onIdsFailed(reason)
+
+        assertEquals(listOf<Throwable?>(reason), reasons)
+    }
+
+    @Test
+    fun throwingOnDroppedDoesNotEscapeFromSubmit() {
+        val queue = queue(maxPending = 1)
+
+        queue.submit(event("first"), onDropped = { throw IllegalStateException("host code") })
+        queue.submit(event("second"))
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("second:u1:s1"), sent)
+    }
 }

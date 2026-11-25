@@ -42,6 +42,14 @@ abstract class NetworkCallback<T> : Callback<T> {
     open fun onGiveUp() {
     }
 
+    /**
+     * A 2xx answer without a body. A give-up by default; override where the
+     * request needs no body to count as done.
+     */
+    open fun onEmptySuccess(error: SegmentifyException) {
+        onGiveUp(error)
+    }
+
     /** Same moment as [onGiveUp], with the reason. Calls [onGiveUp] by default. */
     open fun onGiveUp(error: SegmentifyException) {
         onGiveUp()

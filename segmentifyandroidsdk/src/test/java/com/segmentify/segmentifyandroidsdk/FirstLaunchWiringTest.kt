@@ -46,6 +46,10 @@ class FirstLaunchWiringTest {
         @Volatile
         private var eventStatus = 200
 
+        /** Status the server answers key requests with. */
+        @Volatile
+        private var keyStatus = 200
+
         @BeforeClass
         @JvmStatic
         fun startServer() {
@@ -55,7 +59,7 @@ class FirstLaunchWiringTest {
                     if (path.startsWith("/get/key")) {
                         keyRequests.add(path)
                         val keys = if (path.contains("count=2")) "[\"user-1\",\"session-1\"]" else "[\"session-1\"]"
-                        return MockResponse().setBody(keys)
+                        return MockResponse().setResponseCode(keyStatus).setBody(keys)
                     }
                     events.add(JsonParser.parseString(request.body.readUtf8()).asJsonObject)
                     return MockResponse().setResponseCode(eventStatus).setBody("{\"responses\":[[]]}")
@@ -72,14 +76,14 @@ class FirstLaunchWiringTest {
     }
 
     private var loaded = 0
-    private val errors = mutableListOf<Throwable>()
+    private val errors = mutableListOf<SegmentifyException>()
 
     private val callback = object : SegmentifyCallback<ArrayList<RecommendationModel>> {
         override fun onDataLoaded(data: ArrayList<RecommendationModel>) {
             loaded++
         }
 
-        override fun onError(error: Throwable) {
+        override fun onError(error: SegmentifyException) {
             errors.add(error)
         }
     }
@@ -89,6 +93,7 @@ class FirstLaunchWiringTest {
         keyRequests.clear()
         events.clear()
         eventStatus = 200
+        keyStatus = 200
     }
 
     /** Retrofit delivers callbacks on the main looper, which Robolectric only runs on request. */
@@ -148,8 +153,23 @@ class FirstLaunchWiringTest {
         settle()
 
         assertEquals(1, errors.size)
-        assertTrue(errors[0] is SegmentifyException)
-        assertEquals(500, (errors[0] as SegmentifyException).httpStatus)
+        assertEquals(500, errors[0].httpStatus)
         assertEquals(0, loaded)
+    }
+
+    /** SFY-28788: the host learns why its event was given up. */
+    @Test
+    fun failedKeyRequestReachesTheHostAppWithItsStatus() {
+        keyStatus = 503
+
+        configureAndSendPageView()
+
+        await("the error callback") { errors.size == 1 }
+        settle()
+
+        assertEquals(1, errors.size)
+        assertEquals(503, errors[0].httpStatus)
+        assertEquals(0, loaded)
+        assertTrue("no event without ids: $events", events.isEmpty())
     }
 }

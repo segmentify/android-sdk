@@ -13,6 +13,7 @@ import com.segmentify.segmentifyandroidsdk.utils.CdpUserProfileStore
 import com.segmentify.segmentifyandroidsdk.utils.ClientPreferences
 import com.segmentify.segmentifyandroidsdk.utils.Constant
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyCallback
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import java.util.*
 
@@ -111,7 +112,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -124,7 +125,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -137,7 +138,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -212,7 +213,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -228,7 +229,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -273,7 +274,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -336,7 +337,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -361,7 +362,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -390,7 +391,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -421,7 +422,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -443,7 +444,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -467,7 +468,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -495,7 +496,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -573,7 +574,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })
@@ -593,7 +594,7 @@ object SegmentifyManager {
                 segmentifyCallback.onDataLoaded(data)
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(error: SegmentifyException) {
                 segmentifyCallback.onError(error)
             }
         })

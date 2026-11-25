@@ -21,7 +21,7 @@ internal object EventController {
      * created before the ids arrived (first launch) wait for them instead of
      * being dropped; ids set on the model by the caller are never overwritten.
      */
-    private fun whenSessionReady(event: SegmentifyObject, onError: ((Throwable) -> Unit)? = null, send: () -> Unit) {
+    private fun whenSessionReady(event: SegmentifyObject, onError: ((SegmentifyException) -> Unit)? = null, send: () -> Unit) {
         if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
             send()
             return
@@ -34,7 +34,7 @@ internal object EventController {
                 event.sessionId = ids.sessionId
             }
             send()
-        }, {
+        }, { _ ->
             if (onError != null) {
                 onError(SegmentifyException("The event was given up before a user id and session id were available"))
             }

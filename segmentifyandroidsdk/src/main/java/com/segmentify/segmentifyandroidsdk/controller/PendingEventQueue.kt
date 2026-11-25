@@ -18,7 +18,7 @@ internal class PendingEventQueue(
 ) {
 
     private val lock = Any()
-    private class Waiting(val event: (SessionIds) -> Unit, val onDropped: (() -> Unit)?)
+    private class Waiting(val event: (SessionIds) -> Unit, val onDropped: ((cause: Throwable?) -> Unit)?)
 
     private val pending = ArrayDeque<Waiting>()
     private var requesting = false
@@ -32,8 +32,11 @@ internal class PendingEventQueue(
         submit(event, null)
     }
 
-    /** Like [submit]; [onDropped] is called if the event is given up before it could run. */
-    fun submit(event: (SessionIds) -> Unit, onDropped: (() -> Unit)?) {
+    /**
+     * Like [submit]; [onDropped] is called if the event is given up before it
+     * could run, with the reason the ids could not be obtained when there is one.
+     */
+    fun submit(event: (SessionIds) -> Unit, onDropped: ((cause: Throwable?) -> Unit)?) {
         val current = ids()
         if (current != null) {
             event(current)
@@ -55,7 +58,7 @@ internal class PendingEventQueue(
             }
             latest
         }
-        dropped?.onDropped?.invoke()
+        dropped?.onDropped?.invoke(null)
         if (arrivedMeanwhile != null) {
             event(arrivedMeanwhile)
             return
@@ -98,7 +101,7 @@ internal class PendingEventQueue(
      * The id request failed. Events whose caller can be told are given up and
      * told so; the others stay, and the next event or [ensureIds] retries.
      */
-    fun onIdsFailed() {
+    fun onIdsFailed(cause: Throwable? = null) {
         val givenUp: List<Waiting> = synchronized(lock) {
             requesting = false
             val answerable = pending.filter { it.onDropped != null }
@@ -107,7 +110,7 @@ internal class PendingEventQueue(
         }
         for (waiting in givenUp) {
             try {
-                waiting.onDropped?.invoke()
+                waiting.onDropped?.invoke(null)
             } catch (e: Exception) {
                 log("A waiting event could not be told that it was given up: " + e.message)
             }

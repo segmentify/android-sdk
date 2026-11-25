@@ -155,4 +155,27 @@ class NetworkCallbackTest {
         assertEquals(1, callback.errors.size)
         assertEquals(0, callback.successes)
     }
+
+    @Test
+    fun emptySuccessBodyCanBeAcceptedByTheCaller() {
+        var accepted = 0
+        val callback = object : NetworkCallback<String>() {
+            var giveUps = 0
+
+            override fun onSuccess(response: String) {}
+
+            override fun onEmptySuccess(error: SegmentifyException) {
+                accepted++
+            }
+
+            override fun onGiveUp() {
+                giveUps++
+            }
+        }
+
+        callback.onResponse(FakeCall(), Response.success<String>(null))
+
+        assertEquals(1, accepted)
+        assertEquals(0, callback.giveUps)
+    }
 }
