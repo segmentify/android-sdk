@@ -44,6 +44,13 @@ android {
                 events "failed"
                 exceptionFormat "full"
             }
+            // Robolectric otherwise downloads its Android runtime from Maven
+            // Central while the tests run, which fails often on CI. Gradle
+            // resolves it instead (cached, retried) and Robolectric reads it
+            // from disk.
+            dependsOn 'copyRobolectricRuntime'
+            systemProperty 'robolectric.offline', 'true'
+            systemProperty 'robolectric.dependency.dir', layout.buildDirectory.dir('robolectric-runtime').get().asFile.absolutePath
         }
     }
 
@@ -55,6 +62,17 @@ android {
     kotlinOptions {
         jvmTarget = '11'
     }
+}
+
+configurations {
+    robolectricRuntime {
+        transitive = false
+    }
+}
+
+tasks.register('copyRobolectricRuntime', Copy) {
+    from configurations.robolectricRuntime
+    into layout.buildDirectory.dir('robolectric-runtime')
 }
 
 dependencies {
@@ -75,6 +93,8 @@ dependencies {
     // End-to-end tests of the SDK singletons: real SharedPreferences and main
     // looper from Robolectric, a local HTTP server instead of the backend.
     testImplementation 'org.robolectric:robolectric:4.14.1'
+    // The Android 14 runtime Robolectric 4.14.1 uses for @Config(sdk = 34).
+    robolectricRuntime 'org.robolectric:android-all-instrumented:14-robolectric-10818077-i7'
     // Same version as the OkHttp that Retrofit 2.11.0 brings in.
     testImplementation 'com.squareup.okhttp3:mockwebserver:3.14.9'
     androidTestImplementation 'androidx.test:runner:1.7.0'
