@@ -34,11 +34,20 @@ internal object EventController {
                 event.sessionId = ids.sessionId
             }
             send()
-        }, { _ ->
+        }, { cause ->
             if (onError != null) {
-                onError(SegmentifyException("The event was given up before a user id and session id were available"))
+                onError(givenUp(cause))
             }
         })
+    }
+
+    /** The error for an event that never left the queue, carrying the reason when one is known. */
+    private fun givenUp(cause: Throwable?): SegmentifyException {
+        if (cause == null) {
+            return SegmentifyException("The event was given up: too many events were waiting for a user id and session id")
+        }
+        val status = (cause as? SegmentifyException)?.httpStatus
+        return SegmentifyException("The event was given up, no user id and session id: " + cause.message, status, cause)
     }
 
     fun sendPageView(pageModel : PageModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>){
@@ -218,8 +227,13 @@ internal object EventController {
                             }
                         }
 
-                        override fun onFailure(call: retrofit2.Call<Any>, t: Throwable) {
-                            super.onFailure(call, t)
+                        override fun onEmptySuccess(error: SegmentifyException) {
+                            if (identityPayload != null) {
+                                CdpUserProfileStore.default.markIdentifySent(identityPayload)
+                            }
+                        }
+
+                        override fun onGiveUp(error: SegmentifyException) {
                             if (identityPayload != null) {
                                 CdpUserProfileStore.default.clearInFlightIdentify(identityPayload)
                             }
@@ -235,6 +249,10 @@ internal object EventController {
             ConnectionManager.getEventFactory().sendChangeUser(userChangeModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
+                            segmentifyCallback.onDataLoaded(true)
+                        }
+
+                        override fun onEmptySuccess(error: SegmentifyException) {
                             segmentifyCallback.onDataLoaded(true)
                         }
 

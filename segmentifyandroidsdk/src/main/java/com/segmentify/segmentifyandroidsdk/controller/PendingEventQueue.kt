@@ -58,7 +58,7 @@ internal class PendingEventQueue(
             }
             latest
         }
-        dropped?.onDropped?.invoke(null)
+        dropped?.let { tellDropped(it, null) }
         if (arrivedMeanwhile != null) {
             event(arrivedMeanwhile)
             return
@@ -109,11 +109,16 @@ internal class PendingEventQueue(
             answerable
         }
         for (waiting in givenUp) {
-            try {
-                waiting.onDropped?.invoke(null)
-            } catch (e: Exception) {
-                log("A waiting event could not be told that it was given up: " + e.message)
-            }
+            tellDropped(waiting, cause)
+        }
+    }
+
+    /** Runs host code; whatever it throws must not reach an unrelated caller. */
+    private fun tellDropped(waiting: Waiting, cause: Throwable?) {
+        try {
+            waiting.onDropped?.invoke(cause)
+        } catch (e: Exception) {
+            log("A waiting event could not be told that it was given up: " + e.message)
         }
     }
 

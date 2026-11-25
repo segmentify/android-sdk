@@ -22,7 +22,7 @@ abstract class NetworkCallback<T> : Callback<T> {
             if (body != null) {
                 onSuccess(body)
             } else {
-                giveUp(SegmentifyException("Request successful but body is null", response.code()))
+                onEmptySuccess(SegmentifyException("Request successful but body is null", response.code()))
             }
             return
         }
@@ -47,7 +47,7 @@ abstract class NetworkCallback<T> : Callback<T> {
      * request needs no body to count as done.
      */
     open fun onEmptySuccess(error: SegmentifyException) {
-        onGiveUp(error)
+        giveUp(error)
     }
 
     /** Same moment as [onGiveUp], with the reason. Calls [onGiveUp] by default. */

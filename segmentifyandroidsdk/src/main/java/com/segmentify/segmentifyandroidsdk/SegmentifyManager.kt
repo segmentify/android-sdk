@@ -92,13 +92,19 @@ object SegmentifyManager {
         KeyController.pendingEvents.ensureIds()
     }
 
+    /** A call refused before any request is made still answers its callback. */
+    private fun reject(callback: SegmentifyCallback<*>, message: String) {
+        SegmentifyLogger.printErrorLog(message)
+        callback.onError(SegmentifyException(message))
+    }
+
     private fun setBaseApiUrl() {
         configModel.dataCenterUrl?.let { clientPreferences?.setApiUrl(it) }
     }
 
     fun sendPageView(pageModel: PageModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
         if (pageModel.category.isNullOrBlank()) {
-            SegmentifyLogger.printErrorLog("you must fill category before accessing sendPageView event method")
+            reject(segmentifyCallback, "you must fill category before accessing sendPageView event method")
             return
         }
 
@@ -203,7 +209,7 @@ object SegmentifyManager {
 
     fun sendCustomEvent(customEventModel: CustomEventModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
         if (customEventModel == null || customEventModel?.type.isNullOrBlank()) {
-            SegmentifyLogger.printErrorLog("you must fill type before accessing sendCustomEvent event method")
+            reject(segmentifyCallback, "you must fill type before accessing sendCustomEvent event method")
             return
         }
         customEventModel.eventName = Constant.customEventName
@@ -238,31 +244,31 @@ object SegmentifyManager {
     fun sendProductView(productModel: ProductModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
         productModel.eventName = Constant.productViewEventName
         if (productModel?.productId == null) {
-            SegmentifyLogger.printErrorLog("You must fill productId before accessing sendProductView event")
+            reject(segmentifyCallback, "You must fill productId before accessing sendProductView event")
             return
         }
         if (productModel?.title == null) {
-            SegmentifyLogger.printErrorLog("You must fill title before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill title before accessing sendProductView event method")
             return
         }
         if (productModel?.url == null) {
-            SegmentifyLogger.printErrorLog("You must fill url before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill url before accessing sendProductView event method")
             return
         }
         if (productModel?.image == null) {
-            SegmentifyLogger.printErrorLog("You must fill image before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill image before accessing sendProductView event method")
             return
         }
         if (productModel?.category != null && productModel?.categories != null) {
-            SegmentifyLogger.printErrorLog("You can not both fill category and categpries parameters")
+            reject(segmentifyCallback, "You can not both fill category and categpries parameters")
             return
         }
         if (productModel?.category == null && productModel?.categories == null) {
-            SegmentifyLogger.printErrorLog("You should fill one of category and categories parameters")
+            reject(segmentifyCallback, "You should fill one of category and categories parameters")
             return
         }
         if (productModel.price == null) {
-            SegmentifyLogger.printErrorLog("You must fill price before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill price before accessing sendProductView event method")
             return
         }
 
@@ -288,27 +294,27 @@ object SegmentifyManager {
         productModel.eventName = Constant.productViewEventName
 
         if (productId == null) {
-            SegmentifyLogger.printErrorLog("You must fill productId before accessing sendProductView event")
+            reject(segmentifyCallback, "You must fill productId before accessing sendProductView event")
             return
         }
         if (title == null) {
-            SegmentifyLogger.printErrorLog("You must fill title before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill title before accessing sendProductView event method")
             return
         }
         if (url == null) {
-            SegmentifyLogger.printErrorLog("You must fill url before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill url before accessing sendProductView event method")
             return
         }
         if (image == null) {
-            SegmentifyLogger.printErrorLog("You must fill image before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill image before accessing sendProductView event method")
             return
         }
         if (categories == null) {
-            SegmentifyLogger.printErrorLog("You must fill categories before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill categories before accessing sendProductView event method")
             return
         }
         if (price == null) {
-            SegmentifyLogger.printErrorLog("You must fill price before accessing sendProductView event method")
+            reject(segmentifyCallback, "You must fill price before accessing sendProductView event method")
             return
         }
 
@@ -348,12 +354,12 @@ object SegmentifyManager {
         checkoutModel.checkoutStep = Constant.customerInformationStep
 
         if (checkoutModel.totalPrice == null) {
-            SegmentifyLogger.printErrorLog("You must fill totalPrice before accessing sendCustomerInformation event")
+            reject(segmentifyCallback, "You must fill totalPrice before accessing sendCustomerInformation event")
             return
         }
 
         if (checkoutModel.productList == null) {
-            SegmentifyLogger.printErrorLog("you must fill productList before accessing sendCustomerInformation event method")
+            reject(segmentifyCallback, "you must fill productList before accessing sendCustomerInformation event method")
             return
         }
 
@@ -374,12 +380,12 @@ object SegmentifyManager {
         checkoutModel.checkoutStep = Constant.customerInformationStep
 
         if (totalPrice == null) {
-            SegmentifyLogger.printErrorLog("You must fill totalPrice before accessing sendCustomerInformation event")
+            reject(segmentifyCallback, "You must fill totalPrice before accessing sendCustomerInformation event")
             return
         }
 
         if (productList == null) {
-            SegmentifyLogger.printErrorLog("you must fill productList before accessing sendCustomerInformation event method")
+            reject(segmentifyCallback, "you must fill productList before accessing sendCustomerInformation event method")
             return
         }
 
@@ -454,12 +460,12 @@ object SegmentifyManager {
         checkoutModel.eventName = Constant.checkoutEventName
         checkoutModel.checkoutStep = Constant.paymentInformationStep
         if (checkoutModel.totalPrice == null) {
-            SegmentifyLogger.printErrorLog("You must fill totalPrice before accessing sendPaymentInformation event")
+            reject(segmentifyCallback, "You must fill totalPrice before accessing sendPaymentInformation event")
             return
         }
 
         if (checkoutModel.productList == null) {
-            SegmentifyLogger.printErrorLog("you must fill productList before accessing sendPaymentInformation event method")
+            reject(segmentifyCallback, "you must fill productList before accessing sendPaymentInformation event method")
             return
         }
 
@@ -479,12 +485,12 @@ object SegmentifyManager {
         checkoutModel.eventName = Constant.checkoutEventName
         checkoutModel.checkoutStep = Constant.paymentInformationStep
         if (checkoutModel.totalPrice == null) {
-            SegmentifyLogger.printErrorLog("You must fill totalPrice before accessing sendPaymentInformation event")
+            reject(segmentifyCallback, "You must fill totalPrice before accessing sendPaymentInformation event")
             return
         }
 
         if (checkoutModel.productList == null) {
-            SegmentifyLogger.printErrorLog("you must fill productList before accessing sendPaymentInformation event method")
+            reject(segmentifyCallback, "you must fill productList before accessing sendPaymentInformation event method")
             return
         }
 
@@ -559,11 +565,11 @@ object SegmentifyManager {
         checkoutModel.checkoutStep = Constant.paymentPurchaseStep
 
         if (checkoutModel.totalPrice == null) {
-            SegmentifyLogger.printErrorLog("You must fill totalPrice before accessing sendPurchase event")
+            reject(segmentifyCallback, "You must fill totalPrice before accessing sendPurchase event")
             return
         }
         if (checkoutModel.productList == null || checkoutModel.productList?.size == 0) {
-            SegmentifyLogger.printErrorLog("You must fill productList before accessing sendPurchase event method")
+            reject(segmentifyCallback, "You must fill productList before accessing sendPurchase event method")
             return
         }
 
