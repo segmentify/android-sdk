@@ -144,4 +144,36 @@ class PendingEventQueueTest {
 
         assertEquals(listOf("first:u1", "nested:u1:s1"), sent)
     }
+
+    // Code review follow-ups.
+
+    @Test
+    fun throwingEventDoesNotStopTheOthersAndDoesNotEscape() {
+        val queue = queue()
+        queue.submit { throw IllegalStateException("boom") }
+        queue.submit(event("second"))
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("second:u1:s1"), sent)
+        assertEquals(1, logs.size)
+    }
+
+    @Test
+    fun idsArrivingBetweenCheckAndEnqueueSendTheEventWithoutANewRequest() {
+        // The first read sees no ids; by the time the queue takes its lock the
+        // key response has stored them and onIdsAvailable() has already run.
+        var reads = 0
+        val queue = PendingEventQueue(
+            ids = { if (reads++ == 0) null else SessionIds("u1", "s1") },
+            requestIds = { idRequests++ },
+            log = { logs.add(it) }
+        )
+
+        queue.submit(event("pageView"))
+
+        assertEquals(listOf("pageView:u1:s1"), sent)
+        assertEquals(0, idRequests)
+    }
 }
