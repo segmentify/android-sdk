@@ -17,26 +17,70 @@ internal class PendingEventQueue(
     private val maxPending: Int = DEFAULT_MAX_PENDING
 ) {
 
-    /** Runs [event] with the ids. Current behaviour: an event without ids is dropped. */
+    private val lock = Any()
+    private val pending = ArrayDeque<(SessionIds) -> Unit>()
+    private var requesting = false
+
+    /**
+     * Runs [event] with the ids. When they are not known yet the event waits
+     * (the oldest one is dropped once [maxPending] are waiting) and the ids
+     * are requested, unless a request is already running.
+     */
     fun submit(event: (SessionIds) -> Unit) {
         val current = ids()
         if (current != null) {
             event(current)
-        } else {
-            log("You must fill userid&sessionid before sending an event")
+            return
         }
+
+        synchronized(lock) {
+            if (pending.size >= maxPending) {
+                pending.removeFirst()
+                log("Dropped the oldest waiting event: $maxPending events are waiting for a user id and session id")
+            }
+            pending.addLast(event)
+        }
+        requestIdsIfIdle()
     }
 
+    /** Requests the ids when they are missing and no request is running. */
     fun ensureIds() {
         if (ids() == null) {
-            requestIds()
+            requestIdsIfIdle()
         }
     }
 
+    /** The owner stored new ids: send everything that was waiting, in order. */
     fun onIdsAvailable() {
+        val current = ids()
+        val ready: List<(SessionIds) -> Unit> = synchronized(lock) {
+            requesting = false
+            if (current == null) {
+                emptyList()
+            } else {
+                pending.toList().also { pending.clear() }
+            }
+        }
+        if (current != null) {
+            ready.forEach { it(current) }
+        }
     }
 
+    /** The id request failed: keep the events; the next event or [ensureIds] retries. */
     fun onIdsFailed() {
+        synchronized(lock) {
+            requesting = false
+        }
+    }
+
+    private fun requestIdsIfIdle() {
+        synchronized(lock) {
+            if (requesting) {
+                return
+            }
+            requesting = true
+        }
+        requestIds()
     }
 
     companion object {

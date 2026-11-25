@@ -3,6 +3,7 @@ package com.segmentify.segmentifyandroidsdk.controller
 import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -34,11 +35,54 @@ internal object KeyController {
         return TimeUnit.SECONDS.convert(diff, TimeUnit.MILLISECONDS)
     }
 
+    /** Events that arrived before the ids; see [PendingEventQueue]. */
+    val pendingEvents = PendingEventQueue(
+        ids = { currentIds() },
+        requestIds = { requestMissingIds() },
+        log = { SegmentifyLogger.printErrorLog(it) }
+    )
+
+    private fun currentIds(): SessionIds? {
+        val preferences = SegmentifyManager.clientPreferences ?: return null
+        val userId = preferences.getUserId()
+        val sessionId = preferences.getSessionId()
+        return if (userId.isEmpty() || sessionId.isEmpty()) null else SessionIds(userId, sessionId)
+    }
+
+    private fun requestMissingIds() {
+        val preferences = SegmentifyManager.clientPreferences
+        if (preferences == null) {
+            SegmentifyLogger.printErrorLog("SegmentifyManager.config must be called before sending events")
+            pendingEvents.onIdsFailed()
+            return
+        }
+        try {
+            if (preferences.getUserId().isEmpty()) {
+                getUserIdAndSessionId()
+            } else {
+                getSessionId()
+            }
+        } catch (t: Throwable) {
+            SegmentifyLogger.printErrorLog("Could not request user id and session id: " + t.message)
+            pendingEvents.onIdsFailed()
+        }
+    }
+
     fun getSessionId() {
         ConnectionManager.getUserSessionFactory().getSession(1)
             .enqueue(object : NetworkCallback<ArrayList<String>>() {
                 override fun onSuccess(response: ArrayList<String>) {
-                    SegmentifyManager.clientPreferences?.setSessionId(response[0])
+                    val sessionId = response.getOrNull(0)
+                    if (sessionId.isNullOrEmpty()) {
+                        pendingEvents.onIdsFailed()
+                        return
+                    }
+                    SegmentifyManager.clientPreferences?.setSessionId(sessionId)
+                    pendingEvents.onIdsAvailable()
+                }
+
+                override fun onGiveUp() {
+                    pendingEvents.onIdsFailed()
                 }
             })
     }
@@ -47,8 +91,19 @@ internal object KeyController {
         ConnectionManager.getUserSessionFactory().getUserIdAndSession(2)
             .enqueue(object : NetworkCallback<ArrayList<String>>() {
                 override fun onSuccess(response: ArrayList<String>) {
-                    SegmentifyManager.clientPreferences?.setUserId(response[0])
-                    SegmentifyManager.clientPreferences?.setSessionId(response[1])
+                    val userId = response.getOrNull(0)
+                    val sessionId = response.getOrNull(1)
+                    if (userId.isNullOrEmpty() || sessionId.isNullOrEmpty()) {
+                        pendingEvents.onIdsFailed()
+                        return
+                    }
+                    SegmentifyManager.clientPreferences?.setUserId(userId)
+                    SegmentifyManager.clientPreferences?.setSessionId(sessionId)
+                    pendingEvents.onIdsAvailable()
+                }
+
+                override fun onGiveUp() {
+                    pendingEvents.onIdsFailed()
                 }
             })
     }
