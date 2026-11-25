@@ -1,11 +1,13 @@
 package com.segmentify.segmentifyandroidsdk
 
+import com.segmentify.segmentifyandroidsdk.model.EventResponseModel
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import okhttp3.Request
 import okhttp3.ResponseBody
 import okio.Timeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Call
 import retrofit2.Callback
@@ -177,5 +179,57 @@ class NetworkCallbackTest {
 
         assertEquals(1, accepted)
         assertEquals(0, callback.giveUps)
+    }
+
+    // The backend rejects events with HTTP 200 and a statusCode other than SUCCESS.
+
+    private class AnyCallback<T> : NetworkCallback<T>() {
+        var successes = 0
+        val errors = mutableListOf<SegmentifyException>()
+
+        override fun onSuccess(response: T) {
+            successes++
+        }
+
+        override fun onGiveUp(error: SegmentifyException) {
+            errors.add(error)
+        }
+    }
+
+    @Test
+    fun rejectedEventInAnUntypedBodyIsAnError() {
+        val callback = AnyCallback<Any>()
+
+        callback.onResponse(null, Response.success<Any>(mapOf("statusCode" to "NO_SESSIONID", "timestamp" to 1.0)))
+
+        assertEquals(0, callback.successes)
+        assertEquals(listOf<String?>("NO_SESSIONID"), callback.errors.map { it.statusCode })
+        assertEquals(listOf<Int?>(200), callback.errors.map { it.httpStatus })
+    }
+
+    @Test
+    fun rejectedEventInATypedBodyIsAnError() {
+        val callback = AnyCallback<EventResponseModel>()
+        val body = EventResponseModel()
+        body.statusCode = "BOT"
+
+        callback.onResponse(null, Response.success(body))
+
+        assertEquals(0, callback.successes)
+        assertEquals(listOf<String?>("BOT"), callback.errors.map { it.statusCode })
+    }
+
+    @Test
+    fun successStatusCodeAndMissingStatusCodeAreSuccesses() {
+        val untyped = AnyCallback<Any>()
+        untyped.onResponse(null, Response.success<Any>(mapOf("statusCode" to "SUCCESS")))
+        untyped.onResponse(null, Response.success<Any>(mapOf("responses" to emptyList<Any>())))
+
+        val typed = AnyCallback<EventResponseModel>()
+        typed.onResponse(null, Response.success(EventResponseModel()))
+
+        assertEquals(2, untyped.successes)
+        assertEquals(1, typed.successes)
+        assertTrue(untyped.errors.isEmpty() && typed.errors.isEmpty())
     }
 }

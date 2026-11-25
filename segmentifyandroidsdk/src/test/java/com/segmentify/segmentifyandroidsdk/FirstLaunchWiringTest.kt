@@ -46,6 +46,10 @@ class FirstLaunchWiringTest {
         @Volatile
         private var eventStatus = 200
 
+        /** Body the server answers events with. */
+        @Volatile
+        private var eventBody = "{\"statusCode\":\"SUCCESS\",\"responses\":[[]]}"
+
         /** Status the server answers key requests with. */
         @Volatile
         private var keyStatus = 200
@@ -62,7 +66,7 @@ class FirstLaunchWiringTest {
                         return MockResponse().setResponseCode(keyStatus).setBody(keys)
                     }
                     events.add(JsonParser.parseString(request.body.readUtf8()).asJsonObject)
-                    return MockResponse().setResponseCode(eventStatus).setBody("{\"responses\":[[]]}")
+                    return MockResponse().setResponseCode(eventStatus).setBody(eventBody)
                 }
             })
             server.start()
@@ -93,6 +97,7 @@ class FirstLaunchWiringTest {
         keyRequests.clear()
         events.clear()
         eventStatus = 200
+        eventBody = "{\"statusCode\":\"SUCCESS\",\"responses\":[[]]}"
         keyStatus = 200
     }
 
@@ -171,5 +176,21 @@ class FirstLaunchWiringTest {
         assertEquals(503, errors[0].httpStatus)
         assertEquals(0, loaded)
         assertTrue("no event without ids: $events", events.isEmpty())
+    }
+
+    /** The backend rejects with HTTP 200; the host must still see an error. */
+    @Test
+    fun eventRejectedByTheBackendReachesTheHostAppWithTheReason() {
+        eventBody = "{\"statusCode\":\"INVALID_EVENT\",\"timestamp\":1}"
+
+        configureAndSendPageView()
+
+        await("the error callback") { errors.size == 1 }
+        settle()
+
+        assertEquals("INVALID_EVENT", errors[0].statusCode)
+        assertEquals(200, errors[0].httpStatus)
+        assertEquals(0, loaded)
+        assertEquals("a rejected event is not retried: $events", 1, events.size)
     }
 }
