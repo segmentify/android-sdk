@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.segmentify.segmentifyandroidsdk.model.DynamicItemsModel
 import com.segmentify.segmentifyandroidsdk.model.EventResponseModel
+import com.segmentify.segmentifyandroidsdk.model.ParamsModel
 import com.segmentify.segmentifyandroidsdk.model.ProductRecommendationModel
 import com.segmentify.segmentifyandroidsdk.model.RecommendationModel
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
@@ -17,82 +18,128 @@ import org.json.JSONObject
  */
 internal object RecommendationResponseParser {
 
+    private const val RECOMMEND_PRODUCTS_TYPE = "recommendProducts"
+    private const val STATIC_ITEMS_SOURCE = "RECOMMENDATION_SOURCE_STATIC_ITEMS"
+
     fun parse(
         eventResponseModel: EventResponseModel?,
         onImpression: (instanceId: String?, actionId: String?) -> Unit
     ): ArrayList<RecommendationModel> {
 
+        val recommendations = ArrayList<RecommendationModel>()
+        val responses = eventResponseModel?.responses?.firstOrNull() ?: return recommendations
         val seenProducts = arrayListOf<ProductRecommendationModel>()
-        var reformatedReponseModelList = ArrayList<RecommendationModel>()
 
-        if(eventResponseModel != null && eventResponseModel.responses != null && eventResponseModel?.responses?.size!!>0){
-        for(response in eventResponseModel.responses?.get(0)!!){
+        for (response in responses) {
+            // Anything that is not a product recommendation (engagement campaigns,
+            // banners, future types) is not ours to parse; skip it instead of failing.
+            val params = response?.params ?: continue
+            if (!isRecommendation(response.type, params)) {
+                continue
+            }
 
-            var recommendationModel = RecommendationModel()
-            recommendationModel.notificationTitle = response.params?.notificationTitle
-            recommendationModel.instanceId = response.params?.instanceId
-            recommendationModel.actionId = response.params?.actionId
+            val recommendationModel = RecommendationModel()
+            recommendationModel.notificationTitle = params.notificationTitle
+            recommendationModel.instanceId = params.instanceId
+            recommendationModel.actionId = params.actionId
 
             onImpression(recommendationModel.instanceId, recommendationModel.actionId)
 
-            try {
-                val recommendedProductsString = Gson().toJson(response.params?.recommendedProducts)
-                var recommendedProductsJSON = JSONObject(recommendedProductsString)
-                var recommendedProductItemArray: JSONArray? = recommendedProductsJSON.getJSONArray("RECOMMENDATION_SOURCE_STATIC_ITEMS")
-                for (i in 0 until recommendedProductItemArray!!.length()) {
-                    recommendationModel.products?.add(parseJsonToProductModel(recommendedProductItemArray.getJSONObject(i)))
+            val recommendedProducts = toJsonObject(params.recommendedProducts)
+
+            val staticProducts = recommendedProducts?.optJSONArray(STATIC_ITEMS_SOURCE)
+            if (staticProducts != null) {
+                for (i in 0 until staticProducts.length()) {
+                    val product = parseProductOrNull(staticProducts, i) ?: continue
+                    recommendationModel.products?.add(product)
                 }
-            } catch (ex: Exception) {
-                SegmentifyLogger.printErrorLog(ex.message.toString())
             }
-            var dynamicItemString = response.params?.dynamicItems?.replace("\"", "*")
-            dynamicItemString = dynamicItemString?.replace("*", "\"")
-            val listType = object : TypeToken<ArrayList<DynamicItemsModel>>() {}.type
-            var dynamicItems: ArrayList<DynamicItemsModel> = Gson().fromJson<ArrayList<DynamicItemsModel>>(dynamicItemString, listType)
 
-            for (dynamicItem in dynamicItems) {
-                var recommendationProductListName: String = ""
-                if (!dynamicItem.recommendationSource.isNullOrEmpty()) {
-                    recommendationProductListName = dynamicItem.recommendationSource!!
-                    if (!dynamicItem.timeFrame.isNullOrBlank() || !dynamicItem.timeFrame.isNullOrEmpty()) {
-                        recommendationProductListName = recommendationProductListName + "|" + dynamicItem.timeFrame
+            for (dynamicItem in parseDynamicItems(params.dynamicItems)) {
+                val source = sourceKey(dynamicItem) ?: continue
+                val products = recommendedProducts?.optJSONArray(source) ?: continue
+                val itemCount = dynamicItem.itemCount
 
-                        if (!dynamicItem.score.isNullOrBlank() || !dynamicItem.score.isNullOrEmpty()) {
-                            recommendationProductListName = recommendationProductListName + "|" + dynamicItem.score
+                // Counting rule kept as it was: a duplicate gives one slot back.
+                var added = 0
+                for (k in 0 until products.length()) {
+                    val product = parseProductOrNull(products, k)
+                    if (product != null) {
+                        if (!isProductSeen(seenProducts, product)) {
+                            recommendationModel.products?.add(product)
+                            added = added + 1
+                        } else if (added > 0) {
+                            added = added - 1
                         }
                     }
 
-                    if (!recommendationProductListName.isNullOrBlank()) {
-                        val recommendedProductsString = Gson().toJson(response.params?.recommendedProducts)
-                        var recommendedProductsJSON = JSONObject(recommendedProductsString)
-                        var recommendedProductItemArray: JSONArray? = recommendedProductsJSON.getJSONArray(recommendationProductListName)
-
-                        var i = 0
-                        for (k in 0 until recommendedProductItemArray!!.length()) {
-                            var productModel = parseJsonToProductModel(recommendedProductItemArray!!.getJSONObject(k))
-                            if (!isProductSeen(seenProducts, productModel)) {
-                                recommendationModel.products?.add(productModel)
-                                i = i + 1
-                            } else {
-                                if (i > 0) {
-                                    i = i - 1
-                                }
-                            }
-
-                            if (i == dynamicItem.itemCount!!) {
-                                break
-                            }
-                        }
+                    if (itemCount != null && added == itemCount) {
+                        break
                     }
                 }
             }
 
-            reformatedReponseModelList.add(recommendationModel)
+            recommendations.add(recommendationModel)
         }
 
-        }
+        return recommendations
+    }
 
-        return reformatedReponseModelList
+    private fun isRecommendation(type: String?, params: ParamsModel): Boolean {
+        if (type == null) {
+            return params.recommendedProducts != null
+        }
+        return type == RECOMMEND_PRODUCTS_TYPE
+    }
+
+    private fun toJsonObject(value: Any?): JSONObject? {
+        if (value == null) {
+            return null
+        }
+        return try {
+            JSONObject(Gson().toJson(value))
+        } catch (ex: Exception) {
+            SegmentifyLogger.printErrorLog("recommendedProducts is not a JSON object: " + ex.message)
+            null
+        }
+    }
+
+    private fun parseDynamicItems(json: String?): List<DynamicItemsModel> {
+        if (json.isNullOrBlank()) {
+            return emptyList()
+        }
+        return try {
+            val listType = object : TypeToken<ArrayList<DynamicItemsModel?>>() {}.type
+            val items: ArrayList<DynamicItemsModel?>? = Gson().fromJson(json, listType)
+            items?.filterNotNull() ?: emptyList()
+        } catch (ex: Exception) {
+            SegmentifyLogger.printErrorLog("dynamicItems could not be parsed: " + ex.message)
+            emptyList()
+        }
+    }
+
+    private fun sourceKey(dynamicItem: DynamicItemsModel): String? {
+        val source = dynamicItem.recommendationSource
+        if (source.isNullOrEmpty()) {
+            return null
+        }
+        var key: String = source
+        if (!dynamicItem.timeFrame.isNullOrEmpty()) {
+            key = key + "|" + dynamicItem.timeFrame
+            if (!dynamicItem.score.isNullOrEmpty()) {
+                key = key + "|" + dynamicItem.score
+            }
+        }
+        return key
+    }
+
+    private fun parseProductOrNull(products: JSONArray, index: Int): ProductRecommendationModel? {
+        return try {
+            parseJsonToProductModel(products.getJSONObject(index))
+        } catch (ex: Exception) {
+            SegmentifyLogger.printErrorLog("skipping malformed product: " + ex.message)
+            null
+        }
     }
 
     private fun parseJsonToProductModel(productJson : JSONObject) : ProductRecommendationModel {
