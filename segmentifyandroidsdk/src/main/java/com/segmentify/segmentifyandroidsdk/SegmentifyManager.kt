@@ -85,12 +85,8 @@ object SegmentifyManager {
         this.configModel.device = "ANDROID"
         setBaseApiUrl()
 
-        if (clientPreferences?.getSessionId().isNullOrBlank()) {
-            if (clientPreferences?.getUserId().isNullOrBlank())
-                KeyController.getUserIdAndSessionId()
-            else
-                KeyController.getSessionId()
-        }
+        // One id request at a time: events sent before it returns wait for it.
+        KeyController.pendingEvents.ensureIds()
         KeyController.controlSessionTimeout()
     }
 

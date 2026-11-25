@@ -15,9 +15,30 @@ import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 
 internal object EventController {
 
+    /**
+     * Runs [send] once the event carries a user id and a session id. Events
+     * created before the ids arrived (first launch) wait for them instead of
+     * being dropped; ids set on the model by the caller are never overwritten.
+     */
+    private fun whenSessionReady(event: SegmentifyObject, send: () -> Unit) {
+        if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
+            send()
+            return
+        }
+        KeyController.pendingEvents.submit { ids ->
+            if (event.userId.isNullOrEmpty()) {
+                event.userId = ids.userId
+            }
+            if (event.sessionId.isNullOrEmpty()) {
+                event.sessionId = ids.sessionId
+            }
+            send()
+        }
+    }
+
     fun sendPageView(pageModel : PageModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>){
 
-        if(!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(pageModel) {
 
             ConnectionManager.getEventFactory().sendPageView(pageModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
@@ -27,26 +48,16 @@ internal object EventController {
                     })
         }
 
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing pageview event")
-            return
-        }
-
     }
 
     fun sendSearchView(pageModel: SearchPageModel, segmentifyCallback: SegmentifyCallback<SearchResponseModel>){
-        if(!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(pageModel) {
             ConnectionManager.getEventFactory().sendSearchView(pageModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<SearchEventResponseModel>(){
                         override fun onSuccess(response: SearchEventResponseModel) {
                             segmentifyCallback.onDataLoaded(reformatSearchResponse(response))
                         }
                     })
-        }
-
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid & sessionid before accessing pageview event")
-            return
         }
     }
 
@@ -64,7 +75,7 @@ internal object EventController {
     }
 
     fun sendFacetedSearchView(pageModel: SearchFacetedPageModel, segmentifyCallback: SegmentifyCallback<SearchFacetedResponseModel>){
-        if (!pageModel.userId.isNullOrEmpty() && !pageModel.sessionId.isNullOrEmpty()) {
+        whenSessionReady(pageModel) {
             ConnectionManager.getEventFactory()
                 .sendFacetedSearchView(pageModel, SegmentifyManager.configModel.apiKey!!)
                 .enqueue(object : NetworkCallback<SearchFacetedEventResponseModel>() {
@@ -72,9 +83,6 @@ internal object EventController {
                         segmentifyCallback.onDataLoaded(reformatSearchFacetedResponse(response))
                     }
                 })
-        } else {
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing pageview event")
-            return
         }
     }
 
@@ -90,7 +98,7 @@ internal object EventController {
 
     fun sendCustomEvent(customEventModel: CustomEventModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
 
-        if(!customEventModel.userId.isNullOrEmpty() && !customEventModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(customEventModel) {
 
 
             ConnectionManager.getEventFactory().sendCustomEvent(customEventModel,SegmentifyManager.configModel.apiKey!!)
@@ -100,10 +108,6 @@ internal object EventController {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing custom event")
-            return
-        }
 
 
     }
@@ -111,7 +115,7 @@ internal object EventController {
     fun sendProductView(productModel: ProductModel, segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>){
 
 
-        if(!productModel.userId.isNullOrEmpty() && !productModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(productModel) {
 
 
             ConnectionManager.getEventFactory().sendProductView(productModel,SegmentifyManager.configModel.apiKey!!)
@@ -121,16 +125,11 @@ internal object EventController {
                         }
                     })
         }
-
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing productview event")
-            return
-        }
     }
 
     fun sendAddOrRemoveBasket(basketModel: BasketModel){
 
-        if(!basketModel.userId.isNullOrEmpty() && !basketModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(basketModel) {
 
             ConnectionManager.getEventFactory().sendAddOrRemoveBasket(basketModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
@@ -138,16 +137,12 @@ internal object EventController {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing addorremove event")
-            return
-        }
 
     }
 
     fun sendCheckout(checkoutModel: CheckoutModel,segmentifyCallback: SegmentifyCallback<ArrayList<RecommendationModel>>) {
 
-        if(!checkoutModel.userId.isNullOrEmpty() && !checkoutModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(checkoutModel) {
             ConnectionManager.getEventFactory().sendPurchase(checkoutModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<EventResponseModel>(){
                         override fun onSuccess(response: EventResponseModel) {
@@ -156,16 +151,11 @@ internal object EventController {
                     })
         }
 
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing checkout event")
-            return
-        }
-
     }
 
     fun sendUserOperation(userModel: UserModel){
 
-        if(!userModel.userId.isNullOrEmpty() && !userModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(userModel) {
 
             ConnectionManager.getEventFactory().sendUserOperation(userModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
@@ -173,30 +163,23 @@ internal object EventController {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing useroperation event")
-            return
-        }
     }
 
     fun sendUserTraits(userTraitsEventModel: UserTraitsEventModel) {
 
-        if (!userTraitsEventModel.userId.isNullOrEmpty() && !userTraitsEventModel.sessionId.isNullOrEmpty()) {
+        whenSessionReady(userTraitsEventModel) {
 
             ConnectionManager.getEventFactory().sendUserTraits(userTraitsEventModel, SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>() {
                         override fun onSuccess(response: Any) {
                         }
                     })
-        } else {
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing user traits event")
-            return
         }
     }
 
     fun sendCdpUserEvent(model: UserTraitsEventModel, identityPayload: CdpEventsPayload? = null) {
 
-        if (!model.userId.isNullOrEmpty() && !model.sessionId.isNullOrEmpty()) {
+        whenSessionReady(model) {
 
             ConnectionManager.getEventFactory().sendUserTraits(model, SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>() {
@@ -213,15 +196,12 @@ internal object EventController {
                             }
                         }
                     })
-        } else {
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing cdp user event")
-            return
         }
     }
 
     fun sendChangeUser(userChangeModel: UserChangeModel,segmentifyCallback : SegmentifyCallback<Boolean>){
 
-        if(!userChangeModel.userId.isNullOrEmpty() && !userChangeModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(userChangeModel) {
 
             ConnectionManager.getEventFactory().sendChangeUser(userChangeModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
@@ -230,49 +210,37 @@ internal object EventController {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing changeuser event")
-            return
-        }
 
 
     }
 
     fun sendInteractionEvent(interactionModel: InteractionModel){
 
-        if(!interactionModel.userId.isNullOrEmpty() && !interactionModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(interactionModel) {
             ConnectionManager.getEventFactory().sendInteractionEvent(interactionModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing interaction event")
-            return
-        }
 
     }
 
     fun sendBannerOperations(bannerOperationOperationsModel: BannerOperationsModel){
 
-        if(!bannerOperationOperationsModel.userId.isNullOrEmpty() && !bannerOperationOperationsModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(bannerOperationOperationsModel) {
             ConnectionManager.getEventFactory().sendBannerOperations(bannerOperationOperationsModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing banner operation event")
-            return
-        }
 
     }
 
     fun sendBannerGroupView(bannerGroupViewModel: BannerGroupViewModel){
 
-        if(!bannerGroupViewModel.userId.isNullOrEmpty() && !bannerGroupViewModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(bannerGroupViewModel) {
             ConnectionManager.getEventFactory().sendBannerGroupView(bannerGroupViewModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
@@ -295,24 +263,16 @@ internal object EventController {
                         }
                     })
         }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing banner group view event")
-            return
-        }
     }
 
     fun sendInternalBannerGroup(bannerGroupViewModel: BannerGroupViewModel){
 
-        if(!bannerGroupViewModel.userId.isNullOrEmpty() && !bannerGroupViewModel.sessionId.isNullOrEmpty()){
+        whenSessionReady(bannerGroupViewModel) {
             ConnectionManager.getEventFactory().sendInternalBannerGroup(bannerGroupViewModel,SegmentifyManager.configModel.apiKey!!)
                     .enqueue(object : NetworkCallback<Any>(){
                         override fun onSuccess(response: Any) {
                         }
                     })
-        }
-        else{
-            SegmentifyLogger.printErrorLog("You must fill userid&sessionid before accessing internal banner group event")
-            return
         }
     }
 
