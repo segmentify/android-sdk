@@ -64,14 +64,18 @@ android {
     }
 }
 
-configurations {
-    robolectricRuntime {
-        transitive = false
-    }
-}
+// The Android runtimes Robolectric 4.14.1 loads: 14 for @Config(sdk = 34) and
+// 15, its newest, which it uses to read resources. Each one is resolved in its
+// own configuration; in a shared one Gradle would keep only the newer version.
+def robolectricRuntimeVersions = ['14-robolectric-10818077-i7', '15-robolectric-12650502-i7']
 
 tasks.register('copyRobolectricRuntime', Copy) {
-    from configurations.robolectricRuntime
+    robolectricRuntimeVersions.each { version ->
+        def runtime = configurations.detachedConfiguration(
+                dependencies.create("org.robolectric:android-all-instrumented:${version}"))
+        runtime.transitive = false
+        from runtime
+    }
     into layout.buildDirectory.dir('robolectric-runtime')
 }
 
@@ -93,10 +97,6 @@ dependencies {
     // End-to-end tests of the SDK singletons: real SharedPreferences and main
     // looper from Robolectric, a local HTTP server instead of the backend.
     testImplementation 'org.robolectric:robolectric:4.14.1'
-    // The Android runtimes Robolectric 4.14.1 loads: 14 for @Config(sdk = 34)
-    // and 15, its newest, which it uses to read resources.
-    robolectricRuntime 'org.robolectric:android-all-instrumented:14-robolectric-10818077-i7'
-    robolectricRuntime 'org.robolectric:android-all-instrumented:15-robolectric-12650502-i7'
     // Same version as the OkHttp that Retrofit 2.11.0 brings in.
     testImplementation 'com.squareup.okhttp3:mockwebserver:3.14.9'
     androidTestImplementation 'androidx.test:runner:1.7.0'
