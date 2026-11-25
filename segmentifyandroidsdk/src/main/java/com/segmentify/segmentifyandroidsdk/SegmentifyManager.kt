@@ -85,9 +85,10 @@ object SegmentifyManager {
         this.configModel.device = "ANDROID"
         setBaseApiUrl()
 
-        // One id request at a time: events sent before it returns wait for it.
-        KeyController.pendingEvents.ensureIds()
+        // Drop an expired session first, then request whatever id is missing.
+        // One key request at a time: events sent before it returns wait for it.
         KeyController.controlSessionTimeout()
+        KeyController.pendingEvents.ensureIds()
     }
 
     private fun setBaseApiUrl() {
