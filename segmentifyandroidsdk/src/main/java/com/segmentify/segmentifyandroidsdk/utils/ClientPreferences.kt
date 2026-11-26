@@ -57,6 +57,11 @@ class ClientPreferences(context: Context) : PreferencesManager(context) {
         putLong(SAVED_DATE_FOR_SESSION_MILLIS, date)
     }
 
+    /** Moves the end of the session; written on every event, so not on the calling thread. */
+    fun extendSessionUntil(date: Long) {
+        putLongInBackground(SAVED_DATE_FOR_SESSION_MILLIS, date)
+    }
+
     fun getSessionKeepSeconds(): Int {
         return getInt(SESSION_KEEP_SECONDS, 86400)
     }

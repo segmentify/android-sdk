@@ -32,6 +32,6 @@ internal object SessionWindow {
 
     /** Starts the window again from now: called for every event sent and every new session. */
     fun extend(preferences: ClientPreferences) {
-        preferences.setSavedDateforSession(clock() + preferences.getSessionKeepSeconds() * 1000L)
+        preferences.extendSessionUntil(clock() + preferences.getSessionKeepSeconds() * 1000L)
     }
 }
