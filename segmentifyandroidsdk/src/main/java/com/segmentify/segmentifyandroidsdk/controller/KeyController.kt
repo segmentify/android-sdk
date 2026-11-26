@@ -56,7 +56,7 @@ internal object KeyController {
     private fun requestMissingIds() {
         val preferences = SegmentifyManager.clientPreferences
         if (preferences == null) {
-            val notConfigured = SegmentifyException("SegmentifyManager.config must be called before sending events")
+            val notConfigured = SegmentifyException(ConnectionManager.NOT_CONFIGURED)
             SegmentifyLogger.printErrorLog(notConfigured.message.toString())
             pendingEvents.onIdsFailed(notConfigured)
             return

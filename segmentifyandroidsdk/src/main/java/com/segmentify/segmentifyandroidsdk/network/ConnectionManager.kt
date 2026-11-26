@@ -7,133 +7,94 @@ import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.network.Factories.EventFactory
 import com.segmentify.segmentifyandroidsdk.network.Factories.PushFactory
 import com.segmentify.segmentifyandroidsdk.network.Factories.UserSessionFactory
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyUserAgent
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-
+/**
+ * The SDK's HTTP client and Retrofit services.
+ *
+ * Nothing here reads the configuration when the object is created, so it can
+ * be touched before SegmentifyManager.config. Each service is looked up for
+ * the URL configured at the moment of the call: a service used before its URL
+ * is configured fails with a [SegmentifyException], and a changed URL gets a
+ * new service.
+ */
 object ConnectionManager {
-    private val timeoutInterval = 60
-    private var userSessionFactory: UserSessionFactory
-    private var eventFactory: EventFactory
-    private lateinit var pushFactory: PushFactory
-    private val client: OkHttpClient
 
-    init {
-        val logging = HttpLoggingInterceptor()
+    internal const val NOT_CONFIGURED = "SegmentifyManager.config must be called before sending events"
+    internal const val PUSH_NOT_CONFIGURED = "SegmentifyManager.setPushConfig must be called before sending push events"
 
-        if (SegmentifyManager.clientPreferences?.isLogVisible()!!) {
-            logging.level = HttpLoggingInterceptor.Level.BODY
-        } else {
-            logging.level = HttpLoggingInterceptor.Level.NONE
+    private const val TIMEOUT_SECONDS = 60L
+
+    private val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            // The SDK's headers first, so that the log shows the request as it is sent.
+            .addInterceptor(Interceptor { chain -> withSdkHeaders(chain) })
+            .addInterceptor(SdkLogInterceptor({ SegmentifyManager.clientPreferences?.isLogVisible() == true }))
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
+    }
+
+    /** Retrofit services by type and base URL. */
+    private val services = ConcurrentHashMap<String, Any>()
+
+    private fun withSdkHeaders(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val withHeaders = try {
+            val builder = request.newBuilder()
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .header(SegmentifyUserAgent.HEADER_NAME, SegmentifyUserAgent.current)
+            SegmentifyManager.configModel.subDomain?.let { builder.addHeader("Origin", it) }
+            builder.build()
+        } catch (e: Exception) {
+            Log.d("addHeader", "Error", e)
+            request
         }
+        return chain.proceed(withHeaders)
+    }
 
-        val httpClient = OkHttpClient.Builder()
-
-        //Gelen response kontrol edilecek
-        // The SDK's headers first, so that the log shows the request as it is sent.
-        httpClient.addInterceptor(Interceptor { chain ->
-            val request = chain?.request()
-            val newRequest: Request
-
-            try {
-                newRequest = request?.newBuilder()
-                        ?.addHeader("Origin", SegmentifyManager.configModel.subDomain)
-                        ?.addHeader("Content-Type", "application/json")
-                        ?.addHeader("Accept", "application/json")
-                        ?.header(SegmentifyUserAgent.HEADER_NAME, SegmentifyUserAgent.current)!!.build()
-            } catch (e: Exception) {
-                Log.d("addHeader", "Error")
-                e.printStackTrace()
-                return@Interceptor chain?.proceed(request)!!
-            }
-
-            /*if(SegmentifyManager.clientPreferences != null && SegmentifyManager.clientPreferences!!.getSessionId().isNullOrBlank()){
-                val getSessionIdRequest = Request.Builder().header("Content-Type", "application/json").header("Accept", "application/json").get().url(BuildConfig.KEY_ADDRESS + "get/key?count=1").build()
-                var response = getSyncClient().newCall(getSessionIdRequest).execute()
-                val listType = object : TypeToken<ArrayList<String>>() {}.type
-                var sessionIdResponse = Gson().fromJson<ArrayList<String>>(response.body().toString(), listType)
-
-                SegmentifyManager.clientPreferences?.setSessionId(sessionIdResponse[0])
-            }
-
-            if(SegmentifyManager.clientPreferences != null && SegmentifyManager.clientPreferences!!.getUserId().isNullOrBlank()){
-                val getUserIDSessionIdRequest = Request.Builder().header("Content-Type", "application/json").header("Accept", "application/json").get().url(BuildConfig.KEY_ADDRESS + "get/key?count=2").build()
-                var response = getSyncClient().newCall(getUserIDSessionIdRequest).execute()
-                val listType = object : TypeToken<ArrayList<String>>() {}.type
-                var userIdSessionIdResponse = Gson().fromJson<ArrayList<String>>(response.body().toString(), listType)
-
-                SegmentifyManager.clientPreferences?.setUserId(userIdSessionIdResponse[0])
-                SegmentifyManager.clientPreferences?.setSessionId(userIdSessionIdResponse[1])
-            }*/
-
-            chain.proceed(newRequest)
-        })
-        httpClient.addInterceptor(logging)
-        httpClient.connectTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
-        httpClient.readTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
-
-        client = httpClient.build()
-        val keyService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl())
+    private fun <T> service(baseUrl: String?, type: Class<T>, notConfigured: String): T {
+        if (baseUrl.isNullOrBlank()) {
+            throw SegmentifyException(notConfigured)
+        }
+        val service = services.getOrPut(type.name + " " + baseUrl) {
+            Retrofit.Builder()
+                .baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create())
                 .client(client)
                 .build()
-
-        userSessionFactory = keyService.create(UserSessionFactory::class.java)
-
-        val eventService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl())
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
-
-        eventFactory = eventService.create(EventFactory::class.java)
-
-        if (SegmentifyManager.configModel?.dataCenterUrlPush != null) {
-            val pushService = Retrofit.Builder()
-                    .baseUrl(SegmentifyManager.configModel?.dataCenterUrlPush)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .client(client)
-                    .build()
-
-            pushFactory = pushService.create(PushFactory::class.java)
+                .create(type)
         }
+        return type.cast(service)!!
     }
 
     fun getUserSessionFactory(): UserSessionFactory {
-        return userSessionFactory
+        return service(SegmentifyManager.clientPreferences?.getApiUrl(), UserSessionFactory::class.java, NOT_CONFIGURED)
     }
 
     fun getEventFactory(): EventFactory {
-        return eventFactory
+        return service(SegmentifyManager.clientPreferences?.getApiUrl(), EventFactory::class.java, NOT_CONFIGURED)
     }
 
     fun getPushFactory(): PushFactory {
-        return pushFactory
+        return service(SegmentifyManager.configModel.dataCenterUrlPush, PushFactory::class.java, PUSH_NOT_CONFIGURED)
     }
 
+    /**
+     * Services follow the configured URLs on their own; this only drops the
+     * ones built so far. Kept because it is public.
+     */
     fun rebuildServices() {
-        val eventService = Retrofit.Builder()
-                .baseUrl(SegmentifyManager.clientPreferences?.getApiUrl())
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
-        eventFactory = eventService.create(EventFactory::class.java)
-
-        if (SegmentifyManager.configModel?.dataCenterUrlPush != null) {
-            val pushService = Retrofit.Builder()
-                    .baseUrl(SegmentifyManager.configModel?.dataCenterUrlPush)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .client(client)
-                    .build()
-            pushFactory = pushService.create(PushFactory::class.java)
-        }
+        services.clear()
     }
 
     fun getSyncClient(): OkHttpClient {
