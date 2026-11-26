@@ -24,6 +24,14 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        // What a customer's release build does to the SDK: R8 with only the rules
+        // the SDK ships. CI checks the model fields survive it (SFY-28792).
+        minified {
+            initWith release
+            minifyEnabled true
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+        }
     }
 
     namespace = 'com.segmentify.segmentifysdk'
