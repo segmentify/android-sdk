@@ -1,5 +1,7 @@
 package com.segmentify.segmentifyandroidsdk
 
+import okhttp3.logging.HttpLoggingInterceptor
+import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import android.os.Looper
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -212,5 +214,20 @@ class FirstLaunchWiringTest {
         )
         assertEquals("one key request and one event: $userAgents", 2, userAgents.size)
         assertEquals(listOf<String?>(expected, expected), userAgents.toList())
+    }
+
+    /**
+     * The logging interceptor must run after the one that adds the SDK's headers,
+     * or the logged request shows neither User-Agent nor Origin.
+     */
+    @Test
+    fun requestsAreLoggedWithTheHeadersTheSdkAdds() {
+        configureAndSendPageView()
+        await("the page view callback") { loaded == 1 }
+
+        val interceptors = ConnectionManager.getSyncClient().interceptors()
+
+        assertTrue("logging interceptor: $interceptors", interceptors.last() is HttpLoggingInterceptor)
+        assertEquals("one logging interceptor: $interceptors", 1, interceptors.count { it is HttpLoggingInterceptor })
     }
 }
