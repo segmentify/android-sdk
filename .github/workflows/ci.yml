@@ -36,6 +36,11 @@ jobs:
       - name: Build demo app
         run: ./gradlew :app:assembleDebug
 
+      - name: Minified demo build keeps the SDK's JSON fields
+        run: |
+          ./gradlew :app:assembleMinified
+          python3 scripts/check_minified_models.py app/build/outputs/mapping/minified
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -44,4 +49,5 @@ jobs:
           path: |
             segmentifyandroidsdk/build/reports
             segmentifyandroidsdk/build/test-results
+            app/build/outputs/mapping
           if-no-files-found: ignore
