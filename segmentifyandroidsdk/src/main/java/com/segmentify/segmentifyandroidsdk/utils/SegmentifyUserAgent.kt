@@ -12,7 +12,7 @@ import com.segmentify.segmentifyandroidsdk.BuildConfig
  * The backend reads the device and operating system from it (SFY-28912), so the
  * format is a contract shared with the iOS and React Native SDKs.
  */
-object SegmentifyUserAgent {
+internal object SegmentifyUserAgent {
     const val HEADER_NAME = "User-Agent"
 
     /** The header for this device; [init] adds the host app. */
