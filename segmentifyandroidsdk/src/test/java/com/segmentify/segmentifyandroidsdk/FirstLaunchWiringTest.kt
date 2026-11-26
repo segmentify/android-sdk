@@ -2,6 +2,7 @@ package com.segmentify.segmentifyandroidsdk
 
 import okhttp3.logging.HttpLoggingInterceptor
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
+import com.segmentify.segmentifyandroidsdk.controller.SessionWindow
 import android.os.Looper
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -14,6 +15,7 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import org.junit.After
 import org.junit.AfterClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -67,7 +69,9 @@ class FirstLaunchWiringTest {
                     userAgents.add(request.getHeader("User-Agent"))
                     if (path.startsWith("/get/key")) {
                         keyRequests.add(path)
-                        val keys = if (path.contains("count=2")) "[\"user-1\",\"session-1\"]" else "[\"session-1\"]"
+                        // A new session id for every key request: session-1, session-2, ...
+                        val session = "session-${keyRequests.size}"
+                        val keys = if (path.contains("count=2")) "[\"user-1\",\"$session\"]" else "[\"$session\"]"
                         return MockResponse().setResponseCode(keyStatus).setBody(keys)
                     }
                     events.add(JsonParser.parseString(request.body.readUtf8()).asJsonObject)
@@ -95,6 +99,11 @@ class FirstLaunchWiringTest {
         override fun onError(error: SegmentifyException) {
             errors.add(error)
         }
+    }
+
+    @After
+    fun restoreClock() {
+        SessionWindow.clock = { System.currentTimeMillis() }
     }
 
     @Before
@@ -229,5 +238,92 @@ class FirstLaunchWiringTest {
 
         assertTrue("logging interceptor: $interceptors", interceptors.last() is HttpLoggingInterceptor)
         assertEquals("one logging interceptor: $interceptors", 1, interceptors.count { it is HttpLoggingInterceptor })
+    }
+
+    // SFY-28789: the session ends sessionKeepSeconds after the last event.
+
+    private var now = 1_700_000_000_000L
+    private val keepMillis = 86_400_000L
+
+    private fun useTestClock() {
+        SessionWindow.clock = { now }
+    }
+
+    private fun sendPageViewAndWait(expectedEvents: Int) {
+        val page = PageModel()
+        page.category = "Home Page"
+        SegmentifyManager.sendPageView(page, callback)
+        await("event $expectedEvents") { events.size == expectedEvents }
+    }
+
+    @Test
+    fun sessionIsReusedInsideTheWindowWithoutAKeyRequest() {
+        useTestClock()
+        configureAndSendPageView()
+        await("the first event") { events.size == 1 }
+
+        now += keepMillis - 1_000
+        sendPageViewAndWait(2)
+        settle()
+
+        assertEquals("one key request: $keyRequests", 1, keyRequests.size)
+        assertEquals("session-1", events[1].get("sessionId").asString)
+    }
+
+    @Test
+    fun sessionIdleLongerThanTheWindowIsReplacedOnTheNextEvent() {
+        useTestClock()
+        configureAndSendPageView()
+        await("the first event") { events.size == 1 }
+
+        // No config() in between: an app that stays alive must rotate too.
+        now += keepMillis + 1_000
+        sendPageViewAndWait(2)
+
+        assertEquals(listOf("/get/key?count=2", "/get/key?count=1"), keyRequests.map { it.replace("&", "") })
+        assertEquals("session-2", events[1].get("sessionId").asString)
+        assertEquals("user-1", events[1].get("userId").asString)
+    }
+
+    @Test
+    fun everyEventKeepsTheSessionAlive() {
+        useTestClock()
+        configureAndSendPageView()
+        await("the first event") { events.size == 1 }
+
+        now += keepMillis * 8 / 10
+        sendPageViewAndWait(2)
+        now += keepMillis * 8 / 10
+        sendPageViewAndWait(3)
+        settle()
+
+        assertEquals("one key request: $keyRequests", 1, keyRequests.size)
+        assertEquals(listOf("session-1", "session-1", "session-1"), events.map { it.get("sessionId").asString })
+    }
+
+    /** Before the fix the session lasted twice the configured time, and only config() checked it. */
+    @Test
+    fun configAfterTheWindowStartsANewSession() {
+        useTestClock()
+        configureAndSendPageView()
+        await("the first event") { events.size == 1 }
+
+        now += keepMillis + 1_000
+        configureAndSendPageView()
+        await("the second event") { events.size == 2 }
+
+        assertEquals("session-2", events[1].get("sessionId").asString)
+    }
+
+    @Test
+    fun storedSessionWithoutAnEndIsNotUsed() {
+        useTestClock()
+        configureAndSendPageView()
+        await("the first event") { events.size == 1 }
+        SegmentifyManager.clientPreferences!!.setSavedDateforSession(0)
+
+        sendPageViewAndWait(2)
+
+        assertEquals("session-2", events[1].get("sessionId").asString)
     }
 }

@@ -5,38 +5,16 @@ import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
-import java.util.*
-import java.util.concurrent.TimeUnit
 
 
 internal object KeyController {
 
+    /**
+     * Forgets the stored session id when its window has passed, so that the next
+     * event asks for a new one. Also runs before every event; see [SessionWindow].
+     */
     fun controlSessionTimeout() {
-        val calendar = Calendar.getInstance()
-        calendar.time = Calendar.getInstance().time
-        calendar.add(
-            Calendar.SECOND,
-            SegmentifyManager.clientPreferences?.getSessionKeepSeconds()!!
-        )
-        var date = calendar.timeInMillis
-        if (SegmentifyManager.clientPreferences?.getSavedDateForSession() != null) {
-            date = SegmentifyManager.clientPreferences?.getSavedDateForSession()!!
-        }
-        val dayBySecondsDifference = getDifferenceDays(date, Calendar.getInstance().timeInMillis)
-        if (dayBySecondsDifference > SegmentifyManager.clientPreferences?.getSessionKeepSeconds()!!) {
-            SegmentifyManager.clientPreferences?.setSavedDateforSession(calendar.timeInMillis)
-            // Expired (or never stored): forget the session id. The caller then
-            // asks pendingEvents.ensureIds() for a new one, so there is a single
-            // key request and events sent meanwhile wait for it.
-            SegmentifyManager.clientPreferences?.setSessionId("")
-        } else {
-            SegmentifyManager.clientPreferences?.setSavedDateforSession(calendar.timeInMillis)
-        }
-    }
-
-    fun getDifferenceDays(d1: Long, d2: Long): Long {
-        val diff = d2 - d1
-        return TimeUnit.SECONDS.convert(diff, TimeUnit.MILLISECONDS)
+        SegmentifyManager.clientPreferences?.let { SessionWindow.activeSessionId(it) }
     }
 
     /** Events that arrived before the ids; see [PendingEventQueue]. */
@@ -83,6 +61,7 @@ internal object KeyController {
                         return
                     }
                     SegmentifyManager.clientPreferences?.setSessionId(sessionId)
+                    SegmentifyManager.clientPreferences?.let { SessionWindow.extend(it) }
                     pendingEvents.onIdsAvailable()
                 }
 
@@ -104,6 +83,7 @@ internal object KeyController {
                     }
                     SegmentifyManager.clientPreferences?.setUserId(userId)
                     SegmentifyManager.clientPreferences?.setSessionId(sessionId)
+                    SegmentifyManager.clientPreferences?.let { SessionWindow.extend(it) }
                     pendingEvents.onIdsAvailable()
                 }
 

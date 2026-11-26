@@ -78,6 +78,11 @@ abstract class PreferencesManager(targetContext: Context) {
         return targetEditor.putLong(key, targetValue).commit()
     }
 
+    /** Like [putLong], but writes to disk in the background: for values written on every event. */
+    fun putLongInBackground(key: String, targetValue: Long) {
+        targetPreferences.edit().putLong(key, targetValue).apply()
+    }
+
     fun putObject(key: String, targetObject: Any) {
         putString(key, gson.toJson(targetObject))
     }
