@@ -1,6 +1,7 @@
 package com.segmentify.segmentifyandroidsdk.utils
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import com.segmentify.segmentifyandroidsdk.BuildConfig
 
@@ -24,7 +25,13 @@ internal object SegmentifyUserAgent {
     fun init(context: Context) {
         val appId = context.packageName
         val appVersion = try {
-            context.packageManager.getPackageInfo(appId, 0).versionName
+            val packageManager = context.packageManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(appId, PackageManager.PackageInfoFlags.of(0)).versionName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(appId, 0).versionName
+            }
         } catch (e: Exception) {
             null
         }

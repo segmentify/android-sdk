@@ -36,7 +36,8 @@ object ConnectionManager {
         val httpClient = OkHttpClient.Builder()
 
         //Gelen response kontrol edilecek
-        httpClient.addInterceptor(logging).addInterceptor(Interceptor { chain ->
+        // The SDK's headers first, so that the log shows the request as it is sent.
+        httpClient.addInterceptor(Interceptor { chain ->
             val request = chain?.request()
             val newRequest: Request
 
@@ -73,6 +74,7 @@ object ConnectionManager {
 
             chain.proceed(newRequest)
         })
+        httpClient.addInterceptor(logging)
         httpClient.connectTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
         httpClient.readTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
 
