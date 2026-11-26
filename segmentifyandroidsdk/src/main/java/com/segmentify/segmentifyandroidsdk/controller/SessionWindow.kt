@@ -16,9 +16,22 @@ internal object SessionWindow {
     var clock: () -> Long = { System.currentTimeMillis() }
 
     /** The stored session id while it is active; otherwise forgets it and returns null. */
-    fun activeSessionId(preferences: ClientPreferences): String? = preferences.getSessionId().ifEmpty { null }
+    fun activeSessionId(preferences: ClientPreferences): String? {
+        val sessionId = preferences.getSessionId()
+        if (sessionId.isEmpty()) {
+            return null
+        }
+        // 0 is what preferences return when nothing was stored.
+        val end = preferences.getSavedDateForSession() ?: 0L
+        if (end <= 0L || clock() > end) {
+            preferences.setSessionId("")
+            return null
+        }
+        return sessionId
+    }
 
     /** Starts the window again from now: called for every event sent and every new session. */
     fun extend(preferences: ClientPreferences) {
+        preferences.setSavedDateforSession(clock() + preferences.getSessionKeepSeconds() * 1000L)
     }
 }

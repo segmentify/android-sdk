@@ -22,8 +22,18 @@ internal object EventController {
      * being dropped; ids set on the model by the caller are never overwritten.
      */
     private fun whenSessionReady(event: SegmentifyObject, onError: ((SegmentifyException) -> Unit)? = null, send: () -> Unit) {
-        if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
+        val preferences = SegmentifyManager.clientPreferences
+        // The event took the stored session id when it was created; drop it if
+        // the session has ended since (SFY-28789).
+        if (preferences != null && !event.sessionId.isNullOrEmpty() && event.sessionId == preferences.getSessionId()) {
+            event.sessionId = SessionWindow.activeSessionId(preferences)
+        }
+        val sendAndExtend = {
+            preferences?.let { SessionWindow.extend(it) }
             send()
+        }
+        if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
+            sendAndExtend()
             return
         }
         KeyController.pendingEvents.submit({ ids ->
@@ -33,7 +43,7 @@ internal object EventController {
             if (event.sessionId.isNullOrEmpty()) {
                 event.sessionId = ids.sessionId
             }
-            send()
+            sendAndExtend()
         }, { cause ->
             if (onError != null) {
                 onError(givenUp(cause))
