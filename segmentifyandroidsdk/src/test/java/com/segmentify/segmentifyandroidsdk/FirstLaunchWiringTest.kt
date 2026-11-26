@@ -1,5 +1,7 @@
 package com.segmentify.segmentifyandroidsdk
 
+import okhttp3.logging.HttpLoggingInterceptor
+import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import android.os.Looper
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -7,6 +9,7 @@ import com.segmentify.segmentifyandroidsdk.model.PageModel
 import com.segmentify.segmentifyandroidsdk.model.RecommendationModel
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyCallback
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyUserAgent
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -41,6 +44,7 @@ class FirstLaunchWiringTest {
         private val server = MockWebServer()
         private val keyRequests = CopyOnWriteArrayList<String>()
         private val events = CopyOnWriteArrayList<JsonObject>()
+        private val userAgents = CopyOnWriteArrayList<String?>()
 
         /** Status the server answers events with. */
         @Volatile
@@ -60,6 +64,7 @@ class FirstLaunchWiringTest {
             server.setDispatcher(object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val path = request.path ?: ""
+                    userAgents.add(request.getHeader("User-Agent"))
                     if (path.startsWith("/get/key")) {
                         keyRequests.add(path)
                         val keys = if (path.contains("count=2")) "[\"user-1\",\"session-1\"]" else "[\"session-1\"]"
@@ -96,6 +101,7 @@ class FirstLaunchWiringTest {
     fun reset() {
         keyRequests.clear()
         events.clear()
+        userAgents.clear()
         eventStatus = 200
         eventBody = "{\"statusCode\":\"SUCCESS\",\"responses\":[[]]}"
         keyStatus = 200
@@ -192,5 +198,36 @@ class FirstLaunchWiringTest {
         assertEquals(200, errors[0].httpStatus)
         assertEquals(0, loaded)
         assertEquals("a rejected event is not retried: $events", 1, events.size)
+    }
+
+    /** SFY-28912 */
+    @Test
+    fun keyAndEventRequestsCarryTheSdkUserAgent() {
+        configureAndSendPageView()
+
+        await("the page view callback") { loaded == 1 }
+
+        val expected = SegmentifyUserAgent.current
+        assertTrue(
+            "unexpected header: $expected",
+            Regex("^SegmentifySDK/" + Regex.escape(BuildConfig.SDK_VERSION) + " \\(android; Android [^;() ]+; [^;()]+\\) [^ /]+(/[^ /]+)?$").matches(expected)
+        )
+        assertEquals("one key request and one event: $userAgents", 2, userAgents.size)
+        assertEquals(listOf<String?>(expected, expected), userAgents.toList())
+    }
+
+    /**
+     * The logging interceptor must run after the one that adds the SDK's headers,
+     * or the logged request shows neither User-Agent nor Origin.
+     */
+    @Test
+    fun requestsAreLoggedWithTheHeadersTheSdkAdds() {
+        configureAndSendPageView()
+        await("the page view callback") { loaded == 1 }
+
+        val interceptors = ConnectionManager.getSyncClient().interceptors()
+
+        assertTrue("logging interceptor: $interceptors", interceptors.last() is HttpLoggingInterceptor)
+        assertEquals("one logging interceptor: $interceptors", 1, interceptors.count { it is HttpLoggingInterceptor })
     }
 }

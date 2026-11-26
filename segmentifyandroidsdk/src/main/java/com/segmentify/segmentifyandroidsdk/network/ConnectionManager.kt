@@ -7,6 +7,7 @@ import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.network.Factories.EventFactory
 import com.segmentify.segmentifyandroidsdk.network.Factories.PushFactory
 import com.segmentify.segmentifyandroidsdk.network.Factories.UserSessionFactory
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyUserAgent
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -35,7 +36,8 @@ object ConnectionManager {
         val httpClient = OkHttpClient.Builder()
 
         //Gelen response kontrol edilecek
-        httpClient.addInterceptor(logging).addInterceptor(Interceptor { chain ->
+        // The SDK's headers first, so that the log shows the request as it is sent.
+        httpClient.addInterceptor(Interceptor { chain ->
             val request = chain?.request()
             val newRequest: Request
 
@@ -43,7 +45,8 @@ object ConnectionManager {
                 newRequest = request?.newBuilder()
                         ?.addHeader("Origin", SegmentifyManager.configModel.subDomain)
                         ?.addHeader("Content-Type", "application/json")
-                        ?.addHeader("Accept", "application/json")!!.build()
+                        ?.addHeader("Accept", "application/json")
+                        ?.header(SegmentifyUserAgent.HEADER_NAME, SegmentifyUserAgent.current)!!.build()
             } catch (e: Exception) {
                 Log.d("addHeader", "Error")
                 e.printStackTrace()
@@ -71,6 +74,7 @@ object ConnectionManager {
 
             chain.proceed(newRequest)
         })
+        httpClient.addInterceptor(logging)
         httpClient.connectTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
         httpClient.readTimeout(timeoutInterval.toLong(), TimeUnit.SECONDS)
 
