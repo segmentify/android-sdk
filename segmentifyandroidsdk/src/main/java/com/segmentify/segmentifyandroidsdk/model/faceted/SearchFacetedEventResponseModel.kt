@@ -1,5 +1,8 @@
 package com.segmentify.segmentifyandroidsdk.model.faceted
 
-class SearchFacetedEventResponseModel {
+import com.segmentify.segmentifyandroidsdk.model.BackendResponse
+
+class SearchFacetedEventResponseModel : BackendResponse {
+    override var statusCode : String? = null
     var search: ArrayList<ArrayList<SearchFacetedResponseModel>>? = null
 }

@@ -3,6 +3,7 @@ package com.segmentify.segmentifyandroidsdk.controller
 import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyException
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -55,8 +56,9 @@ internal object KeyController {
     private fun requestMissingIds() {
         val preferences = SegmentifyManager.clientPreferences
         if (preferences == null) {
-            SegmentifyLogger.printErrorLog("SegmentifyManager.config must be called before sending events")
-            pendingEvents.onIdsFailed()
+            val notConfigured = SegmentifyException("SegmentifyManager.config must be called before sending events")
+            SegmentifyLogger.printErrorLog(notConfigured.message.toString())
+            pendingEvents.onIdsFailed(notConfigured)
             return
         }
         try {
@@ -67,7 +69,7 @@ internal object KeyController {
             }
         } catch (t: Throwable) {
             SegmentifyLogger.printErrorLog("Could not request user id and session id: " + t.message)
-            pendingEvents.onIdsFailed()
+            pendingEvents.onIdsFailed(t)
         }
     }
 
@@ -77,15 +79,15 @@ internal object KeyController {
                 override fun onSuccess(response: ArrayList<String>) {
                     val sessionId = response.getOrNull(0)
                     if (sessionId.isNullOrEmpty()) {
-                        pendingEvents.onIdsFailed()
+                        pendingEvents.onIdsFailed(SegmentifyException("The key response held no session id"))
                         return
                     }
                     SegmentifyManager.clientPreferences?.setSessionId(sessionId)
                     pendingEvents.onIdsAvailable()
                 }
 
-                override fun onGiveUp() {
-                    pendingEvents.onIdsFailed()
+                override fun onGiveUp(error: SegmentifyException) {
+                    pendingEvents.onIdsFailed(error)
                 }
             })
     }
@@ -97,7 +99,7 @@ internal object KeyController {
                     val userId = response.getOrNull(0)
                     val sessionId = response.getOrNull(1)
                     if (userId.isNullOrEmpty() || sessionId.isNullOrEmpty()) {
-                        pendingEvents.onIdsFailed()
+                        pendingEvents.onIdsFailed(SegmentifyException("The key response held no user id and session id"))
                         return
                     }
                     SegmentifyManager.clientPreferences?.setUserId(userId)
@@ -105,8 +107,8 @@ internal object KeyController {
                     pendingEvents.onIdsAvailable()
                 }
 
-                override fun onGiveUp() {
-                    pendingEvents.onIdsFailed()
+                override fun onGiveUp(error: SegmentifyException) {
+                    pendingEvents.onIdsFailed(error)
                 }
             })
     }

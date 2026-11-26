@@ -176,4 +176,69 @@ class PendingEventQueueTest {
         assertEquals(listOf("pageView:u1:s1"), sent)
         assertEquals(0, idRequests)
     }
+
+    // SFY-28788
+
+    @Test
+    fun droppedEventIsToldSo() {
+        val queue = queue(maxPending = 1)
+        val dropped = mutableListOf<String>()
+
+        queue.submit(event("first"), onDropped = { dropped.add("first") })
+        queue.submit(event("second"), onDropped = { dropped.add("second") })
+
+        assertEquals(listOf("first"), dropped)
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("second:u1:s1"), sent)
+        assertEquals(listOf("first"), dropped)
+    }
+
+    @Test
+    fun failedIdRequestGivesUpEventsThatHaveSomeoneToTellAndKeepsTheOthers() {
+        val queue = queue()
+        val dropped = mutableListOf<String>()
+
+        queue.submit(event("pageView"), onDropped = { dropped.add("pageView") })
+        queue.submit(event("basket"))
+        queue.onIdsFailed()
+
+        assertEquals(listOf("pageView"), dropped)
+        assertTrue(sent.isEmpty())
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("basket:u1:s1"), sent)
+        assertEquals(listOf("pageView"), dropped)
+    }
+
+    // Code review follow-ups on SFY-28788.
+
+    @Test
+    fun failedIdRequestPassesItsReasonToTheWaitingCallback() {
+        val queue = queue()
+        val reasons = mutableListOf<Throwable?>()
+        val reason = IllegalStateException("key request failed")
+
+        queue.submit(event("pageView"), onDropped = { reasons.add(it) })
+        queue.onIdsFailed(reason)
+
+        assertEquals(listOf<Throwable?>(reason), reasons)
+    }
+
+    @Test
+    fun throwingOnDroppedDoesNotEscapeFromSubmit() {
+        val queue = queue(maxPending = 1)
+
+        queue.submit(event("first"), onDropped = { throw IllegalStateException("host code") })
+        queue.submit(event("second"))
+
+        currentIds = SessionIds("u1", "s1")
+        queue.onIdsAvailable()
+
+        assertEquals(listOf("second:u1:s1"), sent)
+    }
 }
