@@ -8,6 +8,7 @@ import com.segmentify.segmentifyandroidsdk.model.*
 import com.segmentify.segmentifyandroidsdk.model.faceted.SearchFacetedPageModel
 import com.segmentify.segmentifyandroidsdk.model.faceted.SearchFacetedResponseModel
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
+import com.segmentify.segmentifyandroidsdk.utils.SegmentifyUserAgent
 import com.segmentify.segmentifyandroidsdk.utils.CdpConsent
 import com.segmentify.segmentifyandroidsdk.utils.CdpUserProfileStore
 import com.segmentify.segmentifyandroidsdk.utils.ClientPreferences
@@ -79,6 +80,7 @@ object SegmentifyManager {
 
         clientPreferences = ClientPreferences(context)
         clientPreferences?.getSessionKeepSeconds()!!
+        SegmentifyUserAgent.init(context)
         this.configModel.apiKey = appKey
         this.configModel.dataCenterUrl = dataCenterUrl
         this.configModel.subDomain = subDomain
