@@ -22,8 +22,19 @@ internal object EventController {
      * being dropped; ids set on the model by the caller are never overwritten.
      */
     private fun whenSessionReady(event: SegmentifyObject, onError: ((SegmentifyException) -> Unit)? = null, send: () -> Unit) {
+        if (SegmentifyManager.clientPreferences == null) {
+            report(SegmentifyException(ConnectionManager.NOT_CONFIGURED), onError)
+            return
+        }
+        val sendOrReport = {
+            try {
+                send()
+            } catch (e: SegmentifyException) {
+                report(e, onError)
+            }
+        }
         if (!event.userId.isNullOrEmpty() && !event.sessionId.isNullOrEmpty()) {
-            send()
+            sendOrReport()
             return
         }
         KeyController.pendingEvents.submit({ ids ->
@@ -33,12 +44,18 @@ internal object EventController {
             if (event.sessionId.isNullOrEmpty()) {
                 event.sessionId = ids.sessionId
             }
-            send()
+            sendOrReport()
         }, { cause ->
             if (onError != null) {
                 onError(givenUp(cause))
             }
         })
+    }
+
+    /** An event that could not be sent: logged, and handed to the host when it gave a callback. */
+    private fun report(error: SegmentifyException, onError: ((SegmentifyException) -> Unit)?) {
+        SegmentifyLogger.printErrorLog(error.message.toString())
+        onError?.invoke(error)
     }
 
     /** The error for an event that never left the queue, carrying the reason when one is known. */

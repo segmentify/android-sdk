@@ -1,6 +1,6 @@
 package com.segmentify.segmentifyandroidsdk
 
-import okhttp3.logging.HttpLoggingInterceptor
+import com.segmentify.segmentifyandroidsdk.network.SdkLogInterceptor
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
 import android.os.Looper
 import com.google.gson.JsonObject
@@ -227,7 +227,7 @@ class FirstLaunchWiringTest {
 
         val interceptors = ConnectionManager.getSyncClient().interceptors()
 
-        assertTrue("logging interceptor: $interceptors", interceptors.last() is HttpLoggingInterceptor)
-        assertEquals("one logging interceptor: $interceptors", 1, interceptors.count { it is HttpLoggingInterceptor })
+        assertTrue("logging interceptor: $interceptors", interceptors.last() is SdkLogInterceptor)
+        assertEquals("one logging interceptor: $interceptors", 1, interceptors.count { it is SdkLogInterceptor })
     }
 }

@@ -3,42 +3,42 @@ package com.segmentify.segmentifyandroidsdk.controller
 import com.segmentify.segmentifyandroidsdk.SegmentifyManager
 import com.segmentify.segmentifyandroidsdk.model.NotificationModel
 import com.segmentify.segmentifyandroidsdk.network.ConnectionManager
+import com.segmentify.segmentifyandroidsdk.network.Factories.PushFactory
 import com.segmentify.segmentifyandroidsdk.network.NetworkCallback
-import com.segmentify.segmentifyandroidsdk.utils.ClientPreferences
 import com.segmentify.segmentifyandroidsdk.utils.SegmentifyLogger
 import okhttp3.ResponseBody
-import java.lang.Exception
+import retrofit2.Call
 
 
 internal object PushController {
 
-    var clientPreferences: ClientPreferences? = null
-
     fun sendNotification(notificationModel: NotificationModel) {
-
-        try {
-            ConnectionManager.getPushFactory().sendNotification(notificationModel, SegmentifyManager.configModel.apiKey!!)
-                    .enqueue(object : NetworkCallback<ResponseBody>() {
-                        override fun onSuccess(response: ResponseBody) {
-                            response.close()
-                        }
-                    })
-        } catch (e: Exception) {
-            SegmentifyLogger.printErrorLog("Error occurred when sending notification model, error: $e")
-        }
+        send("notification model") { push, apiKey -> push.sendNotification(notificationModel, apiKey) }
     }
 
     fun sendNotificationInteraction(notificationModel: NotificationModel) {
+        send("notification interaction model") { push, apiKey -> push.sendNotificationInteraction(notificationModel, apiKey) }
+    }
 
+    /**
+     * Push calls have no callback, so a call that cannot be made is logged and
+     * dropped. They can come from a messaging service the system started
+     * before the app configured the SDK.
+     */
+    private fun send(what: String, call: (PushFactory, String) -> Call<ResponseBody>) {
+        val apiKey = SegmentifyManager.configModel.apiKey
+        if (SegmentifyManager.clientPreferences == null || apiKey.isNullOrBlank()) {
+            SegmentifyLogger.printErrorLog("Could not send $what: " + ConnectionManager.NOT_CONFIGURED)
+            return
+        }
         try {
-            ConnectionManager.getPushFactory().sendNotificationInteraction(notificationModel, SegmentifyManager.configModel.apiKey!!)
-                    .enqueue(object : NetworkCallback<ResponseBody>() {
-                        override fun onSuccess(response: ResponseBody) {
-                            response.close()
-                        }
-                    })
+            call(ConnectionManager.getPushFactory(), apiKey).enqueue(object : NetworkCallback<ResponseBody>() {
+                override fun onSuccess(response: ResponseBody) {
+                    response.close()
+                }
+            })
         } catch (e: Exception) {
-            SegmentifyLogger.printErrorLog("Error occurred when sending notification interaction model, error: $e")
+            SegmentifyLogger.printErrorLog("Error occurred when sending $what, error: $e")
         }
     }
 }
